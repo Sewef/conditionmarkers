@@ -40,8 +40,8 @@ export async function buildConditionMarker(
   attachedCount: number,
 ) {
   const sceneDpi = await OBR.scene.grid.getDpi();
-  const imageUrl = `https://sewef-conditionmarkers.onrender.com/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
-  // const imageUrl = `http://localhost:5173/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
+  // const imageUrl = `https://sewef-conditionmarkers.onrender.com/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
+  const imageUrl = `http://localhost:5173/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
 
   // Setup marker grid
   const CONDITION_DPI = 150;
@@ -59,7 +59,10 @@ export async function buildConditionMarker(
 
   const builtMarker = buildImage(markerImage, imageGrid)
     .position(getMarkerPosition(attached, attachedCount, sceneDpi))
-    .rotation(attached.rotation)
+    // Keep marker orientation fixed — do not rotate markers when the
+    // attached token is rotated. This prevents markers from being flipped
+    // when the token is mirrored/rotated by the host.
+    .rotation(0)
     .scale(getMarkerScale(attached))
     .attachedTo(attached.id)
     .locked(true)
@@ -81,18 +84,36 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
   const MARKERS_PER_ROW = 5;
 
   // Find position with respect to image top left corner of image grid
+  // Use an index-based grid position (x, y)
   const markerGridPosition = {
     x: count % MARKERS_PER_ROW,
     y: Math.floor(count / MARKERS_PER_ROW),
   };
+
+  // If the token image is flipped horizontally (scale.x < 0), reverse
+  // the x index for the grid. This ensures that markers remain anchored
+  // to the left side of the token instead of travelling right-to-left
+  // when the token is mirrored.
+  if (imageItem.scale.x < 0) {
+    markerGridPosition.x = MARKERS_PER_ROW - 1 - markerGridPosition.x;
+  }
   const gridCellSpacing = imageItem.image.width / MARKERS_PER_ROW;
   let position = Math2.multiply(markerGridPosition, gridCellSpacing);
 
   // Find position with respect to item position
   position = Math2.subtract(position, imageItem.grid.offset);
   position = Math2.multiply(position, sceneDpi / imageItem.grid.dpi); // scale switch from image to scene
-  position = Math2.multiply(position, imageItem.scale);
-  position = Math2.rotate(position, { x: 0, y: 0 }, imageItem.rotation);
+  // Use absolute scale to apply size without mirroring positions. We handle
+  // mirroring by flipping the grid index above so markers do not move left
+  // or right when the token is mirrored.
+  position = Math2.multiply(position, {
+    x: Math.abs(imageItem.scale.x),
+    y: Math.abs(imageItem.scale.y),
+  });
+  // Don't rotate the position by the parent item rotation — we want markers
+  // to remain at the same grid relative location even if the parent item
+  // is rotated or flipped.
+  // position = Math2.rotate(position, { x: 0, y: 0 }, imageItem.rotation);
 
   // find position with respect to world
   position = Math2.add(position, imageItem.position);
@@ -150,6 +171,12 @@ export async function repositionConditionMarker(imageItems: Image[]) {
         if (images[i].id !== newMarker[i].id)
           console.error("Condition marker ID mismatch, skipping item.");
         else images[i].position = newMarker[i].position;
+      }
+      // Ensure the marker's orientation remains fixed regardless of the
+      // attached token's rotation. This overwrites any previous marker
+      // rotation so updates (reposition) also clear rotation.
+      for (let i = 0; i < images.length; i++) {
+        images[i].rotation = 0;
       }
     }
   );
