@@ -44,7 +44,7 @@ export async function buildConditionMarker(
   // const imageUrl = `http://localhost:5173/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
 
   // Setup marker grid
-  const CONDITION_DPI = 150;
+  const CONDITION_DPI = 100;
   const markerImage = {
     width: CONDITION_DPI,
     height: CONDITION_DPI,
@@ -53,7 +53,7 @@ export async function buildConditionMarker(
   }
   const desiredLength = sceneDpi * 0.16;
   const imageGrid: ImageGrid = {
-    offset: { x: 0, y: 0 },
+    offset: { x: 0, y: CONDITION_DPI/2 },
     dpi: (sceneDpi * CONDITION_DPI) / desiredLength ,
   }
 
@@ -81,10 +81,13 @@ export async function buildConditionMarker(
 function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
   const MARKERS_PER_ROW = 5;
 
-  // Find position with respect to image top left corner of image grid
+  // Arrange markers in a vertical column to the left of the token.
+  // We reuse the existing grid cell spacing so vertical spacing stays proportional
+  // to the token size. Place markers one column to the left (x = -1) and
+  // stack them vertically by their index (`count`).
   const markerGridPosition = {
-    x: count % MARKERS_PER_ROW,
-    y: Math.floor(count / MARKERS_PER_ROW),
+    x: -1,
+    y: count,
   };
   const gridCellSpacing = imageItem.image.width / MARKERS_PER_ROW;
   let position = Math2.multiply(markerGridPosition, gridCellSpacing);
