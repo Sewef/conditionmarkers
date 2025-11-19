@@ -44,14 +44,14 @@ export async function buildConditionMarker(
   // const imageUrl = `http://localhost:5173/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
 
   // Setup marker grid
-  const CONDITION_DPI = 100;
+  const CONDITION_DPI = sceneDpi;
   const markerImage = {
     width: CONDITION_DPI,
     height: CONDITION_DPI,
     mime: "image/jpg",
     url: imageUrl,
   }
-  const desiredLength = sceneDpi * 0.16;
+  const desiredLength = sceneDpi * 0.25;
   const imageGrid: ImageGrid = {
     offset: { x: 0, y: CONDITION_DPI/2 },
     dpi: (sceneDpi * CONDITION_DPI) / desiredLength ,
