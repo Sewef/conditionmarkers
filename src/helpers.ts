@@ -1,5 +1,5 @@
-import OBR, { Item, Math2, buildImage, isImage } from "@owlbear-rodeo/sdk";
-import type { Image, ImageGrid, Vector2 } from "@owlbear-rodeo/sdk";
+import OBR, { Item, Math2, buildImage, buildText, isImage, isText } from "@owlbear-rodeo/sdk";
+import type { Image, ImageGrid, Vector2, Text } from "@owlbear-rodeo/sdk";
 import { getPluginId } from "./getPluginId";
 
 export function isPlainObject(
@@ -53,8 +53,8 @@ export async function buildConditionMarker(
   }
   const desiredLength = sceneDpi * 0.25;
   const imageGrid: ImageGrid = {
-    offset: { x: 0, y: CONDITION_DPI/2 },
-    dpi: (sceneDpi * CONDITION_DPI) / desiredLength ,
+    offset: { x: 0, y: CONDITION_DPI / 2 },
+    dpi: (sceneDpi * CONDITION_DPI) / desiredLength,
   }
 
   const builtMarker = buildImage(markerImage, imageGrid)
@@ -89,7 +89,7 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
     x: -1,
     y: count,
   };
-  const gridCellSpacing = imageItem.image.width / MARKERS_PER_ROW;
+  const gridCellSpacing = 2 * imageItem.image.height / MARKERS_PER_ROW;
   let position = Math2.multiply(markerGridPosition, gridCellSpacing);
 
   // Find position with respect to item position
@@ -111,16 +111,16 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
   return position;
 }
 
- /**
-  * Get number of grid cells that the parent items spans horizontally
-  */
+/**
+ * Get number of grid cells that the parent items spans horizontally
+ */
 function getMarkerScale(imageItem: Image) {
   // Use absolute value of the parent's x scale to avoid mirroring the marker
   const absScale = { x: Math.abs(imageItem.scale.x), y: Math.abs(imageItem.scale.x) };
   const scale = Math2.multiply(absScale, imageItem.image.width / imageItem.grid.dpi);
   return scale;
 }
- 
+
 /**
  * Reposition a marker after one was deleted, always hug the upper left corner
  */
@@ -166,4 +166,103 @@ export async function repositionConditionMarker(imageItems: Image[]) {
       }
     }
   );
+}
+
+export async function setConditionMarkerNumber(
+  conditionName: string,
+  labelText: string
+) {
+  const selection = await OBR.player.getSelection();
+  if (!selection || selection.length === 0) return;
+
+  // On récupère les markers de cette condition sur la sélection
+  const conditionMarkers = await OBR.scene.items.getItems<Image>(
+    (item): item is Image => {
+      const metadata = item.metadata[getPluginId("metadata")];
+      return (
+        isImage(item) &&
+        !!item.attachedTo &&
+        selection.includes(item.attachedTo) &&
+        item.name === `Condition Marker - ${conditionName}` &&
+        isPlainObject(metadata) &&
+        (metadata as any).enabled === true
+      );
+    }
+  );
+
+  if (conditionMarkers.length === 0) return;
+
+  const markerIds = conditionMarkers.map((m) => m.id);
+  const attachments = await OBR.scene.items.getItemAttachments(markerIds);
+
+  const labelMetadataKey = getPluginId("label");
+
+  // Text déjà attachés par l’extension
+  const existingTexts = attachments.filter(
+    (item): item is Text =>
+      isText(item) &&
+      !!item.attachedTo &&
+      markerIds.includes(item.attachedTo) &&
+      isPlainObject(item.metadata[labelMetadataKey])
+  );
+
+  const existingByMarkerId = new Map<string, Text>();
+  for (const txt of existingTexts) {
+    if (txt.attachedTo && !existingByMarkerId.has(txt.attachedTo)) {
+      existingByMarkerId.set(txt.attachedTo, txt);
+    }
+  }
+
+  const toUpdate: Text[] = [];
+  const toCreate: Text[] = [];
+
+  for (const marker of conditionMarkers) {
+    const existing = existingByMarkerId.get(marker.id);
+    if (existing) {
+      toUpdate.push(existing);
+    } else {
+      // Nouveau Text attaché au marker
+      const textItem = buildText()
+        .plainText(labelText)
+        .textType("PLAIN")
+        .position(marker.position)
+        .attachedTo(marker.id)
+        .layer("ATTACHMENT")
+        .fontSize(18)              // petit de base
+        .textAlign("CENTER")
+        .textAlignVertical("MIDDLE")
+        .fillColor("#ffffff")
+        .strokeColor("#000000")
+        .strokeWidth(4)
+        .metadata({
+          [labelMetadataKey]: { condition: conditionName },
+        })
+        .build();
+
+      toCreate.push(textItem);
+    }
+  }
+
+  if (toUpdate.length > 0) {
+    await OBR.scene.items.updateItems(toUpdate, (items) => {
+      for (const item of items) {
+        if (!isText(item)) continue;
+        if (item.text && item.text.type === "PLAIN") {
+          item.text.plainText = labelText;
+        }
+
+        const prevMeta = isPlainObject(item.metadata[labelMetadataKey])
+          ? (item.metadata[labelMetadataKey] as Record<string, unknown>)
+          : {};
+        item.metadata[labelMetadataKey] = {
+          ...prevMeta,
+          condition: conditionName,
+        };
+      }
+    });
+  }
+
+  if (toCreate.length > 0) {
+    await OBR.scene.items.addItems(toCreate);
+  }
 }

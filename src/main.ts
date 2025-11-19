@@ -1,7 +1,7 @@
 import OBR, { Image, isImage, Item } from "@owlbear-rodeo/sdk";
 import { conditions } from "./conditions";
 import { getPluginId } from "./getPluginId";
-import { buildConditionMarker, isPlainObject, updateConditionButtons, repositionConditionMarker } from "./helpers";
+import { buildConditionMarker, isPlainObject, updateConditionButtons, repositionConditionMarker, setConditionMarkerNumber } from "./helpers";
 import "./style.css";
 import { getImage } from "./images";
 
@@ -9,6 +9,8 @@ const PAGE_SIZE = 16;
 
 let currentPage = 1;
 let currentConditions = conditions.slice(0, PAGE_SIZE);
+let hoveredCondition: string | null = null;
+
 
 /**
  * This file represents the HTML of the popover that is shown once
@@ -43,7 +45,7 @@ OBR.onReady(async () => {
   }
 
   loadConditions();
-  
+
   // Attach input listeners
   const input = document.querySelector(".condition-filter") as HTMLTextAreaElement;
   const inputClear = document.querySelector(".clear-button") as HTMLButtonElement;
@@ -68,7 +70,7 @@ OBR.onReady(async () => {
       focusSearchBar();
     });
   }
-  
+
   const pageLeft = document.querySelector(".page-left");
   const pageRight = document.querySelector(".page-right");
 
@@ -110,14 +112,27 @@ OBR.onReady(async () => {
 
   // Attach keydown listener to close popover on "Escape" pressed
   document.addEventListener('keydown', (event) => {
-    if (event.key == "Escape") {
+    if (event.key === "Escape") {
       if (document.activeElement?.id === "search-bar") {
         OBR.popover.close(getPluginId("condition-markers"));
       } else {
         focusSearchBar();
       }
+    } else if (
+      hoveredCondition &&
+      event.key >= "0" &&
+      event.key <= "9" &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      document.activeElement?.id !== "search-bar"
+    ) {
+      // Apply a numeric label to the hovered condition marker for the current selection
+      event.preventDefault();
+      void setConditionMarkerNumber(hoveredCondition, event.key);
     }
   });
+
 });
 
 async function loadConditions() {
@@ -126,19 +141,19 @@ async function loadConditions() {
   if (conditionsArea) {
     conditionsArea.innerHTML = `
         ${currentConditions
-          .map(
-            (condition) =>
-              `<button class="condition-button" id="${condition}">
+        .map(
+          (condition) =>
+            `<button class="condition-button" id="${condition}">
                 <div class="condition">
                   <img src="${getImage(condition)}"/>
                 </div>
                 <div class="selected-icon" id="${condition}Select"></div>
                 <div class="condition-name"><p>${condition}</p></div>
               </button>`
-          )
-          .join("")}
+        )
+        .join("")}
     `;
-  
+
     // Attach click and hover listeners
     const conditionButtons = document.querySelectorAll<HTMLButtonElement>(".condition-button");
 
@@ -148,6 +163,7 @@ async function loadConditions() {
       });
 
       button.addEventListener("mouseover", () => {
+        hoveredCondition = button.id;
         const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
         if (conditionName) {
           conditionName.style.visibility = "visible";
@@ -155,12 +171,16 @@ async function loadConditions() {
       });
 
       button.addEventListener("mouseout", () => {
+        if (hoveredCondition === button.id) {
+          hoveredCondition = null;
+        }
         const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
         if (conditionName) {
           conditionName.style.visibility = "hidden";
         }
       });
     });
+
 
     const allItems = await OBR.scene.items.getItems();
     updateConditionButtons(allItems);
@@ -242,7 +262,8 @@ async function filterConditions(filterString: string) {
   }
 
   for (const condition of conditions) {
-    if (condition.toLowerCase().replace("-", "").replace("'", "").includes(filterString.toLowerCase())) {      const button = document.createElement("button");
+    if (condition.toLowerCase().replace("-", "").replace("'", "").includes(filterString.toLowerCase())) {
+      const button = document.createElement("button");
       button.className = "condition-button";
       button.id = condition;
 
@@ -265,7 +286,7 @@ async function filterConditions(filterString: string) {
 
       button.appendChild(selectedIcon);
       button.appendChild(conditionNameDiv);
-        
+
       button.addEventListener("click", () => {
         handleButtonClick(button);
       });
@@ -283,7 +304,7 @@ async function filterConditions(filterString: string) {
           conditionName.style.visibility = "hidden";
         }
       });
-      
+
       const matchedMarkers = attachedMarkers.filter((marker) => marker.name.includes(condition));
       if (matchedMarkers.length !== 0) {
         selectedIcon.style.visibility = "visible";
@@ -291,7 +312,7 @@ async function filterConditions(filterString: string) {
 
       conditionsToAdd.push(button);
     }
-  
+
     // Remove existing buttons and add filtered buttons
     const conditionsNow = document.querySelectorAll<HTMLButtonElement>(".condition-button");
 
@@ -359,6 +380,7 @@ async function handleButtonClick(button: HTMLButtonElement) {
 
 //focus search bar
 function focusSearchBar() {
+  return;
   (document.getElementById("search-bar") as HTMLInputElement)?.select();
 }
 
