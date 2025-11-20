@@ -23,6 +23,7 @@ export const conditions = [
   "Poisoned",
   "Pumped",
   "Rage",
+  "Regeneration",
   "Seeded",
   "Shield",
   "Sleep",

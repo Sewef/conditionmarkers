@@ -22,6 +22,7 @@ import phased from "./images/phased.svg";
 import poisoned from "./images/poisoned.svg";
 import pumped from "./images/pumped.svg";
 import rage from "./images/rage.svg";
+import regeneration from "./images/regeneration.svg";
 import seeded from "./images/seeded.svg";
 import shield from "./images/shield.svg";
 import sleep from "./images/sleep.svg";
@@ -68,6 +69,7 @@ export function getImage(image: string) {
         case "poisoned": return poisoned;
         case "pumped": return pumped;
         case "rage": return rage;
+        case "regeneration": return regeneration;
         case "seeded": return seeded;
         case "shield": return shield;
         case "sleep": return sleep;
