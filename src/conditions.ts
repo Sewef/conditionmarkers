@@ -9,7 +9,7 @@ export const conditions = [
   "Burned",
   "Chained",
   "Confused",
-  "Curled_Up",
+  "Curled Up",
   "Cursed",
   "Debuff",
   "Fainted",
