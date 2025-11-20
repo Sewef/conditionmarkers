@@ -1,5 +1,6 @@
 import badly_poisoned from "./images/badly_poisoned.svg";
 import bad_sleep from "./images/bad_sleep.svg";
+import bandaged from "./images/bandaged.svg";
 import blinded from "./images/blinded.svg";
 import block from "./images/block.svg";
 import buff from "./images/buff.svg";
@@ -47,6 +48,7 @@ export function getImage(image: string) {
     switch (image.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")) {
         case "badly_poisoned": return badly_poisoned;
         case "bad_sleep": return bad_sleep;
+        case "bandaged": return bandaged;
         case "blinded": return blinded;
         case "block": return block;
         case "buff": return buff;
