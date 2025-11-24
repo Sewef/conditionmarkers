@@ -85,19 +85,27 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
   // We reuse the existing grid cell spacing so vertical spacing stays proportional
   // to the token size. Place markers one column to the left (x = -1) and
   // stack them vertically by their index (`count`).
+  // Place markers en colonne, espacement fixe
   const markerGridPosition = {
     x: -1,
     y: count,
   };
-  const gridCellSpacing = 2 * imageItem.image.height / MARKERS_PER_ROW;
+
+  // Espacement indépendant du token
+  const gridCellSpacing = sceneDpi * 0.5;
+
   let position = Math2.multiply(markerGridPosition, gridCellSpacing);
 
-  // Find position with respect to item position
+  // Position relative au token
   position = Math2.subtract(position, imageItem.grid.offset);
-  position = Math2.multiply(position, sceneDpi / imageItem.grid.dpi); // scale switch from image to scene
-  // Apply absolute scale to avoid inheriting any mirroring from the parent
-  // (flipping the token should not mirror the marker image or offset).
-  const absScale = { x: Math.abs(imageItem.scale.x), y: Math.abs(imageItem.scale.x) };
+  position = Math2.multiply(position, sceneDpi / imageItem.grid.dpi);
+
+  // Éviter le mirroring
+  const absScale = {
+    x: Math.abs(imageItem.scale.x),
+    y: Math.abs(imageItem.scale.y),
+  };
+
   position = Math2.multiply(position, absScale);
   // Rotate the marker offset by the parent's rotation so markers stay
   // anchored to the same relative position on the parent even when the
