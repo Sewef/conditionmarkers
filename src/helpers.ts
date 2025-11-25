@@ -79,7 +79,7 @@ export async function buildConditionMarker(
  * number of other markers on the image already
  */
 function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
-  const MARKERS_PER_ROW = 5;
+  // const MARKERS_PER_ROW = 5;
 
   // Arrange markers in a vertical column to the left of the token.
   // We reuse the existing grid cell spacing so vertical spacing stays proportional
