@@ -67,7 +67,6 @@ OBR.onReady(async () => {
       input.value = "";
       filterConditions(input.value);
       inputClear.style.visibility = "hidden";
-      focusSearchBar();
     });
   }
 
@@ -83,7 +82,6 @@ OBR.onReady(async () => {
           showPage();
         }
       }
-      focusSearchBar();
     });
   }
 
@@ -96,7 +94,6 @@ OBR.onReady(async () => {
           showPage();
         }
       }
-      focusSearchBar();
     });
   }
 
@@ -107,17 +104,17 @@ OBR.onReady(async () => {
   // Add change listener for updating button states
   OBR.scene.items.onChange(updateConditionButtons);
 
-  // Auto focus search bar
-  focusSearchBar();
+  // Make sure the popover can receive keyboard events
+  if (appContainer) {
+    appContainer.setAttribute('tabindex', '-1');
+    // Force focus on the container so keyboard events work immediately without clicking
+    appContainer.focus();
+  }
 
   // Attach keydown listener to close popover on "Escape" pressed
   document.addEventListener('keydown', (event) => {
     if (event.key === "Escape") {
-      if (document.activeElement?.id === "search-bar") {
-        OBR.popover.close(getPluginId("condition-markers"));
-      } else {
-        focusSearchBar();
-      }
+      OBR.popover.close(getPluginId("condition-markers"));
     } else if (
       hoveredCondition &&
       event.key >= "0" &&
@@ -171,9 +168,6 @@ async function loadConditions() {
       });
 
       button.addEventListener("mouseout", () => {
-        if (hoveredCondition === button.id) {
-          hoveredCondition = null;
-        }
         const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
         if (conditionName) {
           conditionName.style.visibility = "hidden";
@@ -292,6 +286,7 @@ async function filterConditions(filterString: string) {
       });
 
       button.addEventListener("mouseover", () => {
+        hoveredCondition = button.id;
         const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
         if (conditionName) {
           conditionName.style.visibility = "visible";
@@ -378,11 +373,7 @@ async function handleButtonClick(button: HTMLButtonElement) {
   }
 }
 
-//focus search bar
-function focusSearchBar() {
-  return;
-  (document.getElementById("search-bar") as HTMLInputElement)?.select();
-}
+
 
 // Prevent errors when many items are added at onces
 const MAX_UPDATE_LENGTH = 40;
