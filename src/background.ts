@@ -54,7 +54,9 @@ OBR.onReady(() => {
     const conditionMarkers = allItems.filter((item): item is Image => {
       if (!isImage(item)) return false;
       const metadata = item.metadata[getPluginId("metadata")];
-      return !!(metadata && typeof metadata === "object" && "enabled" in metadata && metadata.enabled);
+      return !!(metadata && typeof metadata === "object" &&
+        Object.prototype.hasOwnProperty.call(metadata, "enabled") &&
+        (metadata as any).enabled === true);
     });
 
     // Find markers attached to changed tokens
