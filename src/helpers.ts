@@ -201,12 +201,11 @@ export async function setConditionMarkerNumber(
   if (conditionMarkers.length === 0) return;
 
   const markerIds = conditionMarkers.map((m) => m.id);
-  const attachments = await OBR.scene.items.getItemAttachments(markerIds);
-
+  
   const labelMetadataKey = getPluginId("label");
 
-  // Text déjà attachés par l’extension
-  const existingTexts = attachments.filter(
+  // Text déjà attachés par l'extension - on cherche dans toute la scène
+  const existingTexts = await OBR.scene.items.getItems<Text>(
     (item): item is Text =>
       isText(item) &&
       !!item.attachedTo &&
