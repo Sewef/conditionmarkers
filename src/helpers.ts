@@ -63,6 +63,7 @@ export async function buildConditionMarker(
     .rotation(0)
     .scale(getMarkerScale(attached))
     .attachedTo(attached.id)
+    .disableAttachmentBehavior(["ROTATION", "SCALE"])
     .locked(true)
     .name(`Condition Marker - ${name}`)
     .metadata({ [getPluginId("metadata")]: { enabled: true } })
@@ -75,52 +76,40 @@ export async function buildConditionMarker(
 }
 
 /**
- * Gather the marker's position based on the image size and position and the
- * number of other markers on the image already
+ * Calculate the marker's position based on the token's position
+ * and the number of other markers already attached
  */
 function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
-  // const MARKERS_PER_ROW = 5;
-
-  // Arrange markers in a vertical column to the left of the token.
-  // We reuse the existing grid cell spacing so vertical spacing stays proportional
-  // to the token size. Place markers one column to the left (x = -1) and
-  // stack them vertically by their index (`count`).
-  // Place markers en colonne, espacement fixe
+  // Arrange markers in a vertical column to the left of the token
   const markerGridPosition = {
     x: -1,
     y: count,
   };
 
-  // Espacement indépendant du token
   const gridCellSpacing = sceneDpi * 0.5;
 
   let position = Math2.multiply(markerGridPosition, gridCellSpacing);
 
-  // Position relative au token
+  // Position relative to token
   position = Math2.subtract(position, imageItem.grid.offset);
   position = Math2.multiply(position, sceneDpi / imageItem.grid.dpi);
 
-  // Éviter le mirroring
+  // Use absolute scale to avoid mirroring
   const absScale = {
     x: Math.abs(imageItem.scale.x),
     y: Math.abs(imageItem.scale.y),
   };
 
   position = Math2.multiply(position, absScale);
-  // Rotate the marker offset by the parent's rotation so markers stay
-  // anchored to the same relative position on the parent even when the
-  // parent is rotated. The marker image itself will remain unrotated
-  // (we force marker.rotation = 0 when creating/updating the marker).
-  position = Math2.rotate(position, { x: 0, y: 0 }, imageItem.rotation);
 
-  // find position with respect to world
+  // Convert to world position
   position = Math2.add(position, imageItem.position);
 
   return position;
 }
 
 /**
- * Get number of grid cells that the parent items spans horizontally
+ * Calculate the marker's scale based on the token's size
  */
 function getMarkerScale(imageItem: Image) {
   // Use absolute value of the parent's x scale to avoid mirroring the marker
@@ -130,10 +119,10 @@ function getMarkerScale(imageItem: Image) {
 }
 
 /**
- * Reposition a marker after one was deleted, always hug the upper left corner
+ * Reposition markers after adding or removing conditions
  */
 export async function repositionConditionMarker(imageItems: Image[]) {
-  //Grab all condition markers on the scene
+  // Grab all condition markers on the scene
   const conditionMarkers = await OBR.scene.items.getItems<Image>(item => {
     const metadata = item.metadata[getPluginId("metadata")];
     return Boolean(isPlainObject(metadata) && metadata.enabled);
@@ -170,6 +159,10 @@ export async function repositionConditionMarker(imageItems: Image[]) {
           // Ensure markers keep a fixed orientation and correct size when they are repositioned
           images[i].rotation = 0;
           images[i].scale = newMarker[i].scale;
+          // Disable rotation and scale inheritance from parent
+          if (isImage(images[i])) {
+            images[i].disableAttachmentBehavior = ["ROTATION", "SCALE"];
+          }
         }
       }
     }
