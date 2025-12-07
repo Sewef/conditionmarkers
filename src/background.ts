@@ -113,7 +113,9 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
     y: count,
   };
 
-  const gridCellSpacing = sceneDpi * 0.5;
+  const MARKERS_PER_ROW = 5;
+  const tokenGridCellWidth = imageItem.image.width / MARKERS_PER_ROW;
+  const gridCellSpacing = tokenGridCellWidth;
   let position = { 
     x: markerGridPosition.x * gridCellSpacing, 
     y: markerGridPosition.y * gridCellSpacing 
@@ -150,9 +152,11 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
 function getMarkerScale(imageItem: Image) {
   const absScale = { 
     x: Math.abs(imageItem.scale.x), 
-    y: Math.abs(imageItem.scale.x) 
+    y: Math.abs(imageItem.scale.y),
   };
-  const scaleValue = absScale.x * imageItem.image.width / imageItem.grid.dpi;
-  return { x: scaleValue, y: scaleValue };
+  const imageWidthGrid = imageItem.image.width / imageItem.grid.dpi;
+  const scaleX = absScale.x * imageWidthGrid;
+  const scaleY = absScale.y * imageWidthGrid;
+  return { x: scaleX, y: scaleY };
 }
 

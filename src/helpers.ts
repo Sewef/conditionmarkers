@@ -86,7 +86,13 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
     y: count,
   };
 
-  const gridCellSpacing = sceneDpi * 0.5;
+    // Grid spacing should be proportional to token image width so markers
+    // stay correctly positioned when the token image (and its dpi) changes.
+    const MARKERS_PER_ROW = 5;
+    // width of one cell in image-grid units
+    const tokenGridCellWidth = imageItem.image.width / MARKERS_PER_ROW;
+    // spacing in image grid units (we'll convert to scene units later)
+    const gridCellSpacing = tokenGridCellWidth;
 
   let position = Math2.multiply(markerGridPosition, gridCellSpacing);
 
@@ -112,9 +118,10 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
  * Calculate the marker's scale based on the token's size
  */
 function getMarkerScale(imageItem: Image) {
-  // Use absolute value of the parent's x scale to avoid mirroring the marker
-  const absScale = { x: Math.abs(imageItem.scale.x), y: Math.abs(imageItem.scale.x) };
-  const scale = Math2.multiply(absScale, imageItem.image.width / imageItem.grid.dpi);
+  // Use absolute value of the parent's scales to avoid mirroring the marker
+  const absScale = { x: Math.abs(imageItem.scale.x), y: Math.abs(imageItem.scale.y) };
+  const imageWidthGrid = imageItem.image.width / imageItem.grid.dpi; // width in grid units -> convert to scene when used
+  const scale = Math2.multiply(absScale, imageWidthGrid);
   return scale;
 }
 
