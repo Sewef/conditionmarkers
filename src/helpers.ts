@@ -273,3 +273,104 @@ export async function setConditionMarkerNumber(
     await OBR.scene.items.addItems(toCreate);
   }
 }
+
+/**
+ * Set or update a label (text) for markers of a given condition attached to a specific token.
+ * Creates a new text item if none exists, otherwise updates the existing one.
+ */
+export async function setConditionLabelForToken(
+  tokenId: string,
+  conditionName: string,
+  labelText: string
+) {
+  if (!tokenId) return;
+
+  // Get condition markers attached to the provided token
+  const conditionMarkers = await OBR.scene.items.getItems<Image>(
+    (item): item is Image => {
+      const metadata = item.metadata[getPluginId("metadata")];
+      return (
+        isImage(item) &&
+        !!item.attachedTo &&
+        item.attachedTo === tokenId &&
+        item.name === `Condition Marker - ${conditionName}` &&
+        isPlainObject(metadata) &&
+        (metadata as any).enabled === true
+      );
+    }
+  );
+
+  if (conditionMarkers.length === 0) return;
+
+  const markerIds = conditionMarkers.map((m) => m.id);
+  const labelMetadataKey = getPluginId("label");
+
+  // Get existing texts attached to the markers for this condition
+  const existingTexts = await OBR.scene.items.getItems<Text>(
+    (item): item is Text =>
+      isText(item) &&
+      !!item.attachedTo &&
+      markerIds.includes(item.attachedTo) &&
+      isPlainObject(item.metadata[labelMetadataKey])
+  );
+
+  const existingByMarkerId = new Map<string, Text>();
+  for (const txt of existingTexts) {
+    if (txt.attachedTo && !existingByMarkerId.has(txt.attachedTo)) {
+      existingByMarkerId.set(txt.attachedTo, txt);
+    }
+  }
+
+  const toUpdate: Text[] = [];
+  const toCreate: Text[] = [];
+
+  for (const marker of conditionMarkers) {
+    const existing = existingByMarkerId.get(marker.id);
+    if (existing) {
+      toUpdate.push(existing);
+    } else {
+      // New Text attached to the marker
+      const textItem = buildText()
+        .plainText(labelText)
+        .textType("PLAIN")
+        .position(marker.position)
+        .attachedTo(marker.id)
+        .layer("ATTACHMENT")
+        .fontSize(18)
+        .textAlign("CENTER")
+        .textAlignVertical("MIDDLE")
+        .fillColor("#ffffff")
+        .strokeColor("#000000")
+        .strokeWidth(4)
+        .metadata({
+          [labelMetadataKey]: { condition: conditionName },
+        })
+        .build();
+
+      toCreate.push(textItem);
+    }
+  }
+
+  if (toUpdate.length > 0) {
+    await OBR.scene.items.updateItems(toUpdate, (items) => {
+      for (const item of items) {
+        if (!isText(item)) continue;
+        if (item.text && item.text.type === "PLAIN") {
+          item.text.plainText = labelText;
+        }
+
+        const prevMeta = isPlainObject(item.metadata[labelMetadataKey])
+          ? (item.metadata[labelMetadataKey] as Record<string, unknown>)
+          : {};
+        item.metadata[labelMetadataKey] = {
+          ...prevMeta,
+          condition: conditionName,
+        };
+      }
+    });
+  }
+
+  if (toCreate.length > 0) {
+    await OBR.scene.items.addItems(toCreate);
+  }
+}

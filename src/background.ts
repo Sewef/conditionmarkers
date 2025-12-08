@@ -4,6 +4,7 @@ import { isImage } from "@owlbear-rodeo/sdk";
 import type { Image } from "@owlbear-rodeo/sdk";
 
 import icon from "./icon.svg";
+import { setupConditionMarkersApi } from "./api";
 
 /**
  * This file represents the background script run when the plugin loads.
@@ -11,6 +12,8 @@ import icon from "./icon.svg";
  */
 
 OBR.onReady(() => {
+  // Setup API listener in the background so other plugins can call it
+  setupConditionMarkersApi();
   OBR.contextMenu.create({
     id: getPluginId("menu"),
     icons: [
