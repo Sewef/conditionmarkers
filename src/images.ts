@@ -12,5 +12,16 @@ for (const path in modules) {
 }
 
 export function getImage(image: string) {
-    return images[normalize(image)] ?? images["error"] ?? null;
+    const key = normalize(image);
+    // Prefer PNGs from the `public/images` directory for condition icons (smaller, 150px assets)
+    // Keep SVGs for UI/toolbar icons (left, right, close, error) which live in `src/images`.
+    const svgIcons = new Set(["left", "right", "close", "error"]);
+
+    if (svgIcons.has(key)) {
+        // Use the bundled SVG if available, otherwise fall back to the 'error' SVG if present.
+        return images[key] ?? images["error"] ?? null;
+    }
+
+    // For everything else return the PNG from public/images (Vite serves public at /)
+    return `/images/${key}.png`;
 }
