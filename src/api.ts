@@ -59,19 +59,25 @@ export function setupConditionMarkersApi() {
         // Check if marker already exists on token
         const attachedMarkers = conditionMarkers.filter((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${conditionName}`);
         if (attachedMarkers.length > 0) {
-          // Already exists, respond success with an indication
+          // Already exists, update label if value is provided
+          if (value) {
+            console.log(`[API] Updating label for existing condition: tokenId=${tokenId}, conditionName=${conditionName}, value=${value}`);
+            await setConditionLabelForToken(tokenId, conditionName, value);
+          }
           await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, alreadyPresent: true, destination: "LOCAL" }, { destination: "LOCAL" });
           return;
         }
 
         // Build marker and add to scene
         const builtMarker = await buildConditionMarker(conditionName, target, conditionMarkers.filter(m => m.attachedTo === tokenId).length);
+        console.log('[API] Built marker:', builtMarker);
         await OBR.scene.items.addItems([builtMarker]);
 
         // If needed, we could fetch the created marker(s) here, but labels are handled by helper
 
         // If value provided, create or update text attached to the marker using helpers
         if (value) {
+          console.log(`[API] Setting label for new condition: tokenId=${tokenId}, conditionName=${conditionName}, value=${value}`);
           await setConditionLabelForToken(tokenId, conditionName, value);
         }
 

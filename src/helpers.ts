@@ -230,7 +230,7 @@ export async function setConditionMarkerNumber(
     } else {
       // Nouveau Text attaché au marker
       const textItem = buildText()
-        .plainText(labelText)
+        .plainText(String(labelText))
         .textType("PLAIN")
         .position(marker.position)
         .attachedTo(marker.id)
@@ -283,7 +283,10 @@ export async function setConditionLabelForToken(
   conditionName: string,
   labelText: string
 ) {
-  if (!tokenId) return;
+  if (!tokenId) {
+    console.log(`[setConditionLabelForToken] No tokenId provided, abort.`);
+    return;
+  }
 
   // Get condition markers attached to the provided token
   const conditionMarkers = await OBR.scene.items.getItems<Image>(
@@ -300,7 +303,11 @@ export async function setConditionLabelForToken(
     }
   );
 
-  if (conditionMarkers.length === 0) return;
+  console.log(`[setConditionLabelForToken] Found ${conditionMarkers.length} condition markers for tokenId=${tokenId}, conditionName=${conditionName}`);
+  if (conditionMarkers.length === 0) {
+    console.log(`[setConditionLabelForToken] No condition marker found for tokenId=${tokenId}, conditionName=${conditionName}`);
+    return;
+  }
 
   const markerIds = conditionMarkers.map((m) => m.id);
   const labelMetadataKey = getPluginId("label");
@@ -330,8 +337,9 @@ export async function setConditionLabelForToken(
       toUpdate.push(existing);
     } else {
       // New Text attached to the marker
+      // Use the builder to ensure all required fields are present
       const textItem = buildText()
-        .plainText(labelText)
+        .plainText(String(labelText))
         .textType("PLAIN")
         .position(marker.position)
         .attachedTo(marker.id)
@@ -346,31 +354,37 @@ export async function setConditionLabelForToken(
           [labelMetadataKey]: { condition: conditionName },
         })
         .build();
-
+      console.log('[setConditionLabelForToken] Built text label (full):', JSON.stringify(textItem, null, 2));
+      console.log('[setConditionLabelForToken] Built text label (type):', textItem.type);
       toCreate.push(textItem);
     }
   }
 
   if (toUpdate.length > 0) {
-    await OBR.scene.items.updateItems(toUpdate, (items) => {
-      for (const item of items) {
-        if (!isText(item)) continue;
-        if (item.text && item.text.type === "PLAIN") {
-          item.text.plainText = labelText;
-        }
+    console.log('[setConditionLabelForToken] Updating text labels:', toUpdate);
+    await OBR.scene.items.updateItems(
+      toUpdate.map(item => item.id),
+      (items) => {
+        for (const item of items) {
+          if (!isText(item)) continue;
+          if (item.text && item.text.type === "PLAIN") {
+            item.text.plainText = String(labelText);
+          }
 
-        const prevMeta = isPlainObject(item.metadata[labelMetadataKey])
-          ? (item.metadata[labelMetadataKey] as Record<string, unknown>)
-          : {};
-        item.metadata[labelMetadataKey] = {
-          ...prevMeta,
-          condition: conditionName,
-        };
+          const prevMeta = isPlainObject(item.metadata[labelMetadataKey])
+            ? (item.metadata[labelMetadataKey] as Record<string, unknown>)
+            : {};
+          item.metadata[labelMetadataKey] = {
+            ...prevMeta,
+            condition: conditionName,
+          };
+        }
       }
-    });
+    );
   }
 
   if (toCreate.length > 0) {
+    console.log('[setConditionLabelForToken] Adding new text labels:', toCreate);
     await OBR.scene.items.addItems(toCreate);
   }
 }
