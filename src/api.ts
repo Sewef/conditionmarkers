@@ -28,7 +28,7 @@ export function setupConditionMarkersApi() {
 
     try {
       if (!req.action || (req.action !== "add" && req.action !== "remove")) {
-        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: "INVALID_ACTION" }, { destination: "ALL" });
+        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: "INVALID_ACTION" }, { destination: "LOCAL" });
         return;
       }
 
@@ -37,7 +37,7 @@ export function setupConditionMarkersApi() {
       const value: string | undefined = req.value;
 
       if (!tokenId || !conditionName) {
-        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: "MISSING_TOKEN_OR_CONDITION" }, { destination: "ALL" });
+        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: "MISSING_TOKEN_OR_CONDITION" }, { destination: "LOCAL" });
         return;
       }
 
@@ -45,7 +45,7 @@ export function setupConditionMarkersApi() {
       const targetItems = await OBR.scene.items.getItems<Image>((item) => item.id === tokenId);
       const target = targetItems[0];
       if (!target || !isImage(target)) {
-        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: "TOKEN_NOT_FOUND" }, { destination: "ALL" });
+        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: "TOKEN_NOT_FOUND" }, { destination: "LOCAL" });
         return;
       }
 
@@ -60,7 +60,7 @@ export function setupConditionMarkersApi() {
         const attachedMarkers = conditionMarkers.filter((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${conditionName}`);
         if (attachedMarkers.length > 0) {
           // Already exists, respond success with an indication
-          await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, alreadyPresent: true, destination: "ALL" }, { destination: "ALL" });
+          await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, alreadyPresent: true, destination: "LOCAL" }, { destination: "LOCAL" });
           return;
         }
 
@@ -78,25 +78,25 @@ export function setupConditionMarkersApi() {
         // Reposition markers attached to this token
         await repositionConditionMarker([target]);
 
-        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, added: true, destination: "ALL" }, { destination: "ALL" });
+        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, added: true, destination: "LOCAL" }, { destination: "LOCAL" });
         return;
       }
 
       if (req.action === "remove") {
         const attachedMarkers = conditionMarkers.filter((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${conditionName}`);
         if (attachedMarkers.length === 0) {
-          await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, deleted: 0, destination: "ALL" }, { destination: "ALL" });
+          await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, deleted: 0, destination: "LOCAL" }, { destination: "LOCAL" });
           return;
         }
         const idsToDelete = attachedMarkers.map((m) => m.id);
         await OBR.scene.items.deleteItems(idsToDelete);
         await repositionConditionMarker([target]);
-        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, deleted: idsToDelete.length, destination: "ALL" }, { destination: "ALL" });
+        await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: true, deleted: idsToDelete.length, destination: "LOCAL" }, { destination: "LOCAL" });
         return;
       }
     } catch (e) {
       console.error("[API] Exception during marker request", e);
-      await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: String(e), destination: "ALL" }, { destination: "ALL" });
+      await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { ...base, ok: false, error: String(e), destination: "LOCAL" }, { destination: "LOCAL" });
     }
   });
 }
@@ -119,7 +119,7 @@ async function sendApiAction(action: "add" | "remove", tokenId: string, conditio
     OBR.broadcast.onMessage(API_RESPONSE_CHANNEL, handler);
   });
 
-  await OBR.broadcast.sendMessage(API_REQUEST_CHANNEL, { callId, requesterId, action, tokenId, condition, value }, { destination: "ALL" });
+  await OBR.broadcast.sendMessage(API_REQUEST_CHANNEL, { callId, requesterId, action, tokenId, condition, value }, { destination: "LOCAL" });
 
   return new Promise((resolve, reject) => {
     timeoutId = setTimeout(() => {
