@@ -22,5 +22,5 @@ export function getImage(image: string) {
     }
 
     // For everything else return the PNG from public/images (Vite serves public at /)
-    return `/images/${key}.png`;
+    return `/images/${key}.webp`;
 }

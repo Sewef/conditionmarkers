@@ -40,8 +40,8 @@ export async function buildConditionMarker(
   attachedCount: number,
 ) {
   const sceneDpi = await OBR.scene.grid.getDpi();
-  const imageUrl = `https://sewef-conditionmarkers.onrender.com/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
-  // const imageUrl = `http://localhost:5173/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
+  const imageUrl = `https://sewef-conditionmarkers.onrender.com/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.webp`;
+  // const imageUrl = `http://localhost:5173/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.webp`;
 
   // Setup marker grid
   const CONDITION_DPI = sceneDpi;
