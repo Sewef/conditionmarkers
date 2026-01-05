@@ -11,6 +11,7 @@ export const conditions = [
   "Clearsighted",
   "Confused",
   "Controlled",
+  "Corrupted",
   "Curled Up",
   "Cursed",
   "Debuff",
