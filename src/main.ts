@@ -93,7 +93,8 @@ OBR.onReady(async () => {
     pageRight.addEventListener("click", (event: Event) => {
       if (event && event.target) {
         const target = event.target as HTMLTextAreaElement
-        if (!target.classList.contains("disabled") && currentPage < 4) {
+        const maxPages = Math.ceil(orderedConditions.length / PAGE_SIZE);
+        if (!target.classList.contains("disabled") && currentPage < maxPages) {
           currentPage += 1;
           showPage();
         }
@@ -227,28 +228,24 @@ function showPage() {
   const pageRight = document.querySelector(".page-right") as HTMLDivElement;
 
   if (pageLeft && pageRight) {
-    switch (currentPage) {
-      case 1:
-        disablePage(pageLeft);
-        enablePage(pageRight);
-        currentConditions = orderedConditions.slice(0, PAGE_SIZE);
-        break;
-      case 2:
-        enablePage(pageLeft);
-        enablePage(pageRight);
-        currentConditions = orderedConditions.slice(PAGE_SIZE, PAGE_SIZE * 2);
-        break;
-      case 3:
-        enablePage(pageLeft);
-        enablePage(pageRight);
-        currentConditions = orderedConditions.slice(PAGE_SIZE * 2, PAGE_SIZE * 3);
-        break;
-      case 4:
-        enablePage(pageLeft);
-        disablePage(pageRight);
-        currentConditions = orderedConditions.slice(PAGE_SIZE * 3, PAGE_SIZE * 4);
-        break;
+    const maxPages = Math.ceil(orderedConditions.length / PAGE_SIZE);
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const endIndex = currentPage * PAGE_SIZE;
+
+    // Disable/enable navigation buttons based on current page
+    if (currentPage === 1) {
+      disablePage(pageLeft);
+    } else {
+      enablePage(pageLeft);
     }
+
+    if (currentPage === maxPages) {
+      disablePage(pageRight);
+    } else {
+      enablePage(pageRight);
+    }
+
+    currentConditions = orderedConditions.slice(startIndex, endIndex);
     loadConditions();
   }
 }
