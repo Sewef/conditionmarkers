@@ -11,6 +11,8 @@ const PAGE_SIZE = 16;
 let currentPage = 1;
 let currentConditions = conditions.slice(0, PAGE_SIZE);
 let hoveredCondition: string | null = null;
+let orderedConditions: string[] = conditions.slice();
+let initialized = false;
 
 
 /**
@@ -138,6 +140,44 @@ async function loadConditions() {
   const conditionsArea = document.querySelector(".conditions-area");
 
   if (conditionsArea) {
+    // Determine which conditions are active on the current selection and
+    // place those conditions first in the UI (and on the first page)
+    const [allItems, selection, conditionMarkers] = await Promise.all([
+      OBR.scene.items.getItems(),
+      OBR.player.getSelection(),
+      // get condition markers already in the scene
+      OBR.scene.items.getItems<Image>(item => {
+        const metadata = item.metadata[getPluginId("metadata")];
+        return Boolean(isPlainObject(metadata) && metadata.enabled);
+      }),
+    ]);
+
+    const selectedConditions = new Set<string>();
+    if (selection && selection.length > 0) {
+      for (const marker of conditionMarkers) {
+        if (marker.attachedTo && selection.includes(marker.attachedTo)) {
+          const conditionName = marker.name.replace("Condition Marker - ", "");
+          selectedConditions.add(conditionName);
+        }
+      }
+    }
+
+    // Keep original ordering within selected vs non-selected groups.
+    const selectedList = conditions.filter((c) => selectedConditions.has(c));
+    const otherList = conditions.filter((c) => !selectedConditions.has(c));
+
+    // orderedConditions is used for pagination (selected conditions first)
+    orderedConditions = [...selectedList, ...otherList];
+
+    // On initial open, show the first page so selected items are visible first.
+    // Do not force the first page on every reload (that prevented paging).
+    if (!initialized) {
+      currentPage = 1;
+      initialized = true;
+    }
+
+    currentConditions = orderedConditions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
     conditionsArea.innerHTML = `
         ${currentConditions
         .map(
@@ -178,7 +218,6 @@ async function loadConditions() {
     });
 
 
-    const allItems = await OBR.scene.items.getItems();
     updateConditionButtons(allItems);
   }
 }
@@ -192,22 +231,22 @@ function showPage() {
       case 1:
         disablePage(pageLeft);
         enablePage(pageRight);
-        currentConditions = conditions.slice(0, PAGE_SIZE);
+        currentConditions = orderedConditions.slice(0, PAGE_SIZE);
         break;
       case 2:
         enablePage(pageLeft);
         enablePage(pageRight);
-        currentConditions = conditions.slice(PAGE_SIZE, PAGE_SIZE * 2);
+        currentConditions = orderedConditions.slice(PAGE_SIZE, PAGE_SIZE * 2);
         break;
       case 3:
         enablePage(pageLeft);
         enablePage(pageRight);
-        currentConditions = conditions.slice(PAGE_SIZE * 2, PAGE_SIZE * 3);
+        currentConditions = orderedConditions.slice(PAGE_SIZE * 2, PAGE_SIZE * 3);
         break;
       case 4:
         enablePage(pageLeft);
         disablePage(pageRight);
-        currentConditions = conditions.slice(PAGE_SIZE * 3, PAGE_SIZE * 4);
+        currentConditions = orderedConditions.slice(PAGE_SIZE * 3, PAGE_SIZE * 4);
         break;
     }
     loadConditions();
