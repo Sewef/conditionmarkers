@@ -176,6 +176,24 @@ export async function repositionConditionMarker(imageItems: Image[]) {
   );
 }
 
+/**
+ * Calculate the appropriate font size for a condition marker label
+ * based on the marker's actual displayed size in the scene
+ */
+function getMarkerLabelFontSize(marker: Image): number {
+  // The marker's actual size in grid units is: (image.width / grid.dpi) * scale
+  // We use the average of x and y scale to get a representative scale factor
+  const avgScale = (Math.abs(marker.scale.x) + Math.abs(marker.scale.y)) / 2;
+  const markerGridSize = (marker.image.width / marker.grid.dpi) * avgScale;
+  
+  // Scale font size proportionally to the marker's actual displayed grid size
+  // At 0.25 grid units (standard marker size on a standard token), use 18pt
+  const BASELINE_GRID_SIZE = 0.25;
+  const BASELINE_FONT_SIZE = 18;
+  
+  return (markerGridSize / BASELINE_GRID_SIZE) * BASELINE_FONT_SIZE;
+}
+
 export async function setConditionMarkerNumber(
   conditionName: string,
   labelText: string
@@ -229,13 +247,14 @@ export async function setConditionMarkerNumber(
       toUpdate.push(existing);
     } else {
       // Nouveau Text attaché au marker
+      const fontSize = getMarkerLabelFontSize(marker);
       const textItem = buildText()
         .plainText(String(labelText))
         .textType("PLAIN")
         .position(marker.position)
         .attachedTo(marker.id)
         .layer("ATTACHMENT")
-        .fontSize(18)              // petit de base
+        .fontSize(fontSize)
         .textAlign("CENTER")
         .textAlignVertical("MIDDLE")
         .fillColor("#ffffff")
@@ -338,13 +357,14 @@ export async function setConditionLabelForToken(
     } else {
       // New Text attached to the marker
       // Use the builder to ensure all required fields are present
+      const fontSize = getMarkerLabelFontSize(marker);
       const textItem = buildText()
         .plainText(String(labelText))
         .textType("PLAIN")
         .position(marker.position)
         .attachedTo(marker.id)
         .layer("ATTACHMENT")
-        .fontSize(18)
+        .fontSize(fontSize)
         .textAlign("CENTER")
         .textAlignVertical("MIDDLE")
         .fillColor("#ffffff")
