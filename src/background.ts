@@ -22,9 +22,9 @@ OBR.onReady(() => {
         label: "Condition Markers",
         filter: {
           every: [
-            { key: "type", value: "IMAGE" },
             { key: "layer", value: "CHARACTER", coordinator: "||" },
             { key: "layer", value: "MOUNT" },
+            { key: "type", value: "IMAGE" },
           ],
           permissions: ["UPDATE"],
         },
@@ -45,8 +45,8 @@ OBR.onReady(() => {
   // Listen for token changes and reposition markers
   OBR.scene.items.onChange(async (items) => {
     // Find tokens that have changed
-    const changedTokens = items.filter((item): item is Image => 
-      isImage(item) && 
+    const changedTokens = items.filter((item): item is Image =>
+      isImage(item) &&
       (item.layer === "CHARACTER" || item.layer === "MOUNT")
     );
 
@@ -68,12 +68,12 @@ OBR.onReady(() => {
 
     for (const token of changedTokens) {
       const attachedMarkers = conditionMarkers.filter(m => m.attachedTo === token.id);
-      
+
       for (let i = 0; i < attachedMarkers.length; i++) {
         const marker = attachedMarkers[i];
         const newPosition = getMarkerPosition(token, i, sceneDpi);
         const newScale = getMarkerScale(token);
-        
+
         // Only update if position or scale changed
         if (
           marker.position.x !== newPosition.x ||
@@ -119,16 +119,16 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
   const MARKERS_PER_ROW = 5;
   const tokenGridCellWidth = imageItem.image.width / MARKERS_PER_ROW;
   const gridCellSpacing = tokenGridCellWidth;
-  let position = { 
-    x: markerGridPosition.x * gridCellSpacing, 
-    y: markerGridPosition.y * gridCellSpacing 
+  let position = {
+    x: markerGridPosition.x * gridCellSpacing,
+    y: markerGridPosition.y * gridCellSpacing
   };
 
   position = {
     x: position.x - imageItem.grid.offset.x,
     y: position.y - imageItem.grid.offset.y
   };
-  
+
   position = {
     x: position.x * (sceneDpi / imageItem.grid.dpi),
     y: position.y * (sceneDpi / imageItem.grid.dpi)
@@ -153,8 +153,8 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
 }
 
 function getMarkerScale(imageItem: Image) {
-  const absScale = { 
-    x: Math.abs(imageItem.scale.x), 
+  const absScale = {
+    x: Math.abs(imageItem.scale.x),
     y: Math.abs(imageItem.scale.y),
   };
   const imageWidthGrid = imageItem.image.width / imageItem.grid.dpi;
