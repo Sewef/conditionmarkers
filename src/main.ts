@@ -1,7 +1,7 @@
 import OBR, { Image, isImage, Item } from "@owlbear-rodeo/sdk";
 import { conditions } from "./conditions";
 import { getPluginId } from "./getPluginId";
-import { buildConditionMarker, isPlainObject, updateConditionButtons, repositionConditionMarker } from "./helpers";
+import { buildConditionMarker, isPlainObject, updateConditionButtons, repositionConditionMarker, setConditionMarkerNumber } from "./helpers";
 import "./style.css";
 import { getImage } from "./images";
 
@@ -9,6 +9,7 @@ const PAGE_SIZE = 16;
 
 let currentPage = 1;
 let currentConditions = conditions.slice(0, PAGE_SIZE);
+let hoveredCondition: string | null = null;
 
 /**
  * This file represents the HTML of the popover that is shown once
@@ -65,8 +66,7 @@ OBR.onReady(async () => {
       input.value = "";
       filterConditions(input.value);
       inputClear.style.visibility = "hidden";
-      focusSearchBar();
-    });
+          });
   }
   
   const pageLeft = document.querySelector(".page-left");
@@ -81,7 +81,6 @@ OBR.onReady(async () => {
           showPage();
         }
       }
-      focusSearchBar();
     });
   }
 
@@ -105,17 +104,29 @@ OBR.onReady(async () => {
   // Add change listener for updating button states
   OBR.scene.items.onChange(updateConditionButtons);
 
-  // Auto focus search bar
-  focusSearchBar();
+  // Make sure the popover can receive keyboard events
+  if (appContainer) {
+    appContainer.setAttribute('tabindex', '-1');
+    // Force focus on the container so keyboard events work immediately without clicking
+    appContainer.focus();
+  }
 
   // Attach keydown listener to close popover on "Escape" pressed
   document.addEventListener('keydown', (event) => {
-    if (event.key == "Escape") {
-      if (document.activeElement?.id === "search-bar") {
+    if (event.key === "Escape") {
         OBR.popover.close(getPluginId("condition-markers"));
-      } else {
-        focusSearchBar();
-      }
+    } else if (
+      hoveredCondition &&
+      event.key >= "0" &&
+      event.key <= "9" &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      document.activeElement?.id !== "search-bar"
+    ) {
+      // Apply a numeric label to the hovered condition marker for the current selection
+      event.preventDefault();
+      void setConditionMarkerNumber(hoveredCondition, event.key);
     }
   });
 });
@@ -148,6 +159,7 @@ async function loadConditions() {
       });
 
       button.addEventListener("mouseover", () => {
+        hoveredCondition = button.id;
         const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
         if (conditionName) {
           conditionName.style.visibility = "visible";

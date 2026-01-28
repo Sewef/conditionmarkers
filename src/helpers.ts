@@ -1,5 +1,5 @@
-import OBR, { Item, Math2, buildImage, isImage } from "@owlbear-rodeo/sdk";
-import type { Image, ImageGrid, Vector2 } from "@owlbear-rodeo/sdk";
+import OBR, { Item, Math2, buildImage, buildText, isImage, isText } from "@owlbear-rodeo/sdk";
+import type { Image, ImageGrid, Vector2, Text } from "@owlbear-rodeo/sdk";
 import { getPluginId } from "./getPluginId";
 
 export function isPlainObject(
@@ -43,7 +43,7 @@ export async function buildConditionMarker(
   const imageUrl = `https://conditiontracker.onrender.com/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
 
   // Setup marker grid
-  const CONDITION_DPI = 150;
+  const CONDITION_DPI = sceneDpi;
   const markerImage = {
     width: CONDITION_DPI,
     height: CONDITION_DPI,
@@ -152,4 +152,249 @@ export async function repositionConditionMarker(imageItems: Image[]) {
       }
     }
   );
+}
+
+/**
+ * Calculate the appropriate font size for a condition marker label
+ * based on the marker's actual displayed size in the scene
+ */
+function getMarkerLabelFontSize(marker: Image): number {
+  // The marker's actual size in grid units is: (image.width / grid.dpi) * scale
+  // We use the average of x and y scale to get a representative scale factor
+  const avgScale = (Math.abs(marker.scale.x) + Math.abs(marker.scale.y)) / 2;
+  const markerGridSize = (marker.image.width / marker.grid.dpi) * avgScale;
+  
+  // Scale font size proportionally to the marker's actual displayed grid size
+  // At 0.25 grid units (standard marker size on a standard token), use 18pt
+  const BASELINE_GRID_SIZE = 0.25;
+  const BASELINE_FONT_SIZE = 18;
+  
+  return (markerGridSize / BASELINE_GRID_SIZE) * BASELINE_FONT_SIZE;
+}
+
+export async function setConditionMarkerNumber(
+  conditionName: string,
+  labelText: string
+) {
+  const selection = await OBR.player.getSelection();
+  if (!selection || selection.length === 0) return;
+
+  // On récupère les markers de cette condition sur la sélection
+  const conditionMarkers = await OBR.scene.items.getItems<Image>(
+    (item): item is Image => {
+      const metadata = item.metadata[getPluginId("metadata")];
+      return (
+        isImage(item) &&
+        !!item.attachedTo &&
+        selection.includes(item.attachedTo) &&
+        item.name === `Condition Marker - ${conditionName}` &&
+        isPlainObject(metadata) &&
+        (metadata as any).enabled === true
+      );
+    }
+  );
+
+  if (conditionMarkers.length === 0) return;
+
+  const markerIds = conditionMarkers.map((m) => m.id);
+  
+  const labelMetadataKey = getPluginId("label");
+
+  // Text déjà attachés par l'extension - on cherche dans toute la scène
+  const existingTexts = await OBR.scene.items.getItems<Text>(
+    (item): item is Text =>
+      isText(item) &&
+      !!item.attachedTo &&
+      markerIds.includes(item.attachedTo) &&
+      isPlainObject(item.metadata[labelMetadataKey])
+  );
+
+  const existingByMarkerId = new Map<string, Text>();
+  for (const txt of existingTexts) {
+    if (txt.attachedTo && !existingByMarkerId.has(txt.attachedTo)) {
+      existingByMarkerId.set(txt.attachedTo, txt);
+    }
+  }
+
+  const toUpdate: Text[] = [];
+  const toCreate: Text[] = [];
+
+  for (const marker of conditionMarkers) {
+    const existing = existingByMarkerId.get(marker.id);
+    if (existing) {
+      toUpdate.push(existing);
+    } else {
+      // Nouveau Text attaché au marker
+      const fontSize = getMarkerLabelFontSize(marker);
+      const textItem = buildText()
+        .plainText(String(labelText))
+        .textType("PLAIN")
+        .position(marker.position)
+        .attachedTo(marker.id)
+        .layer("ATTACHMENT")
+        .fontSize(fontSize)
+        .textAlign("CENTER")
+        .textAlignVertical("MIDDLE")
+        .fillColor("#ffffff")
+        .strokeColor("#000000")
+        .strokeWidth(4)
+        .metadata({
+          [labelMetadataKey]: { condition: conditionName },
+        })
+        .build();
+
+      toCreate.push(textItem);
+    }
+  }
+
+  if (toUpdate.length > 0) {
+    await OBR.scene.items.updateItems(toUpdate, (items) => {
+      for (const item of items) {
+        if (!isText(item)) continue;
+        if (item.text && item.text.type === "PLAIN") {
+          item.text.plainText = labelText;
+        }
+
+        const prevMeta = isPlainObject(item.metadata[labelMetadataKey])
+          ? (item.metadata[labelMetadataKey] as Record<string, unknown>)
+          : {};
+        item.metadata[labelMetadataKey] = {
+          ...prevMeta,
+          condition: conditionName,
+        };
+      }
+    });
+  }
+
+  if (toCreate.length > 0) {
+    await OBR.scene.items.addItems(toCreate);
+  }
+}
+
+/**
+ * Set or update a label (text) for markers of a given condition attached to a specific token.
+ * Creates a new text item if none exists, otherwise updates the existing one.
+ */
+export async function setConditionLabelForToken(
+  tokenId: string,
+  conditionName: string,
+  labelText: string
+) {
+  if (!tokenId) {
+    console.log(`[setConditionLabelForToken] No tokenId provided, abort.`);
+    return;
+  }
+
+  // Get condition markers attached to the provided token
+  const conditionMarkers = await OBR.scene.items.getItems<Image>(
+    (item): item is Image => {
+      const metadata = item.metadata[getPluginId("metadata")];
+      return (
+        isImage(item) &&
+        !!item.attachedTo &&
+        item.attachedTo === tokenId &&
+        item.name === `Condition Marker - ${conditionName}` &&
+        isPlainObject(metadata) &&
+        (metadata as any).enabled === true
+      );
+    }
+  );
+
+  console.log(`[setConditionLabelForToken] Found ${conditionMarkers.length} condition markers for tokenId=${tokenId}, conditionName=${conditionName}`);
+  if (conditionMarkers.length === 0) {
+    console.log(`[setConditionLabelForToken] No condition marker found for tokenId=${tokenId}, conditionName=${conditionName}`);
+    return;
+  }
+
+  const markerIds = conditionMarkers.map((m) => m.id);
+  const labelMetadataKey = getPluginId("label");
+
+  // Get existing texts attached to the markers for this condition
+  const existingTexts = await OBR.scene.items.getItems<Text>(
+    (item): item is Text =>
+      isText(item) &&
+      !!item.attachedTo &&
+      markerIds.includes(item.attachedTo) &&
+      isPlainObject(item.metadata[labelMetadataKey])
+  );
+
+  const existingByMarkerId = new Map<string, Text>();
+  for (const txt of existingTexts) {
+    if (txt.attachedTo && !existingByMarkerId.has(txt.attachedTo)) {
+      existingByMarkerId.set(txt.attachedTo, txt);
+    }
+  }
+
+  const toUpdate: Text[] = [];
+  const toCreate: Text[] = [];
+
+  for (const marker of conditionMarkers) {
+    const existing = existingByMarkerId.get(marker.id);
+    if (existing) {
+      toUpdate.push(existing);
+    } else {
+      // New Text attached to the marker
+      // Use the builder to ensure all required fields are present
+      const fontSize = getMarkerLabelFontSize(marker);
+      // Décalage pour placer le label en bas à gauche du marker
+      const markerWidth = marker.image.width / marker.grid.dpi * Math.abs(marker.scale.x);
+      const markerHeight = marker.image.height / marker.grid.dpi * Math.abs(marker.scale.y);
+      const labelOffset = {
+        x: -markerWidth / 2 + fontSize / 2,
+        y: markerHeight / 2 - fontSize / 2
+      };
+      const labelPosition = {
+        x: marker.position.x + labelOffset.x,
+        y: marker.position.y + labelOffset.y
+      };
+
+      const textItem = buildText()
+        .plainText(String(labelText))
+        .textType("PLAIN")
+        .position(labelPosition)
+        .attachedTo(marker.id)
+        .layer("ATTACHMENT")
+        .fontSize(fontSize)
+        .textAlign("LEFT")
+        .textAlignVertical("BOTTOM")
+        .fillColor("#ffffff")
+        .strokeColor("#000000")
+        .strokeWidth(4)
+        .metadata({
+          [labelMetadataKey]: { condition: conditionName },
+        })
+        .build();
+      console.log('[setConditionLabelForToken] Built text label (full):', JSON.stringify(textItem, null, 2));
+      console.log('[setConditionLabelForToken] Built text label (type):', textItem.type);
+      toCreate.push(textItem);
+    }
+  }
+
+  if (toUpdate.length > 0) {
+    console.log('[setConditionLabelForToken] Updating text labels:', toUpdate);
+    await OBR.scene.items.updateItems(
+      toUpdate.map(item => item.id),
+      (items) => {
+        for (const item of items) {
+          if (!isText(item)) continue;
+          if (item.text && item.text.type === "PLAIN") {
+            item.text.plainText = String(labelText);
+          }
+
+          const prevMeta = isPlainObject(item.metadata[labelMetadataKey])
+            ? (item.metadata[labelMetadataKey] as Record<string, unknown>)
+            : {};
+          item.metadata[labelMetadataKey] = {
+            ...prevMeta,
+            condition: conditionName,
+          };
+        }
+      }
+    );
+  }
+
+  if (toCreate.length > 0) {
+    console.log('[setConditionLabelForToken] Adding new text labels:', toCreate);
+    await OBR.scene.items.addItems(toCreate);
+  }
 }
