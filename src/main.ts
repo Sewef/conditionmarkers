@@ -4,7 +4,6 @@ import { getPluginId } from "./getPluginId";
 import { buildConditionMarker, isPlainObject, updateConditionButtons, repositionConditionMarker, setConditionMarkerNumber } from "./helpers";
 import "./style.css";
 import { getImage } from "./images";
-import { setupConditionMarkersApi } from "./api";
 
 const PAGE_SIZE = 16;
 
@@ -47,7 +46,6 @@ OBR.onReady(async () => {
     `;
   }
 
-  setupConditionMarkersApi();
   loadConditions();
 
   // Attach input listeners
