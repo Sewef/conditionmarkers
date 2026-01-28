@@ -5,7 +5,7 @@ const modules = import.meta.glob("./images/*.webp", { eager: true, import: "defa
 
 const images: Record<string, string> = {};
 
-// Construction automatique des clés normalisées
+// Automatically construct normalized keys
 for (const path in modules) {
     const fileName = path.split("/").pop()!.replace(".webp", "");
     images[normalize(fileName)] = modules[path] as string;
