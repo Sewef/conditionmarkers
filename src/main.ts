@@ -406,8 +406,6 @@ async function handleButtonClick(button: HTMLButtonElement) {
   }
 }
 
-//focus search bar
-function focusSearchBar() {
 
 
 // Prevent errors when many items are added at onces
