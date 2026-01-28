@@ -10,6 +10,8 @@ const PAGE_SIZE = 16;
 let currentPage = 1;
 let currentConditions = conditions.slice(0, PAGE_SIZE);
 let hoveredCondition: string | null = null;
+let orderedConditions: string[] = conditions.slice();
+let initialized = false;
 
 /**
  * This file represents the HTML of the popover that is shown once
@@ -44,7 +46,6 @@ OBR.onReady(async () => {
   }
 
   loadConditions();
-  
   // Attach input listeners
   const input = document.querySelector(".condition-filter") as HTMLTextAreaElement;
   const inputClear = document.querySelector(".clear-button") as HTMLButtonElement;
@@ -66,9 +67,9 @@ OBR.onReady(async () => {
       input.value = "";
       filterConditions(input.value);
       inputClear.style.visibility = "hidden";
-          });
+    });
   }
-  
+
   const pageLeft = document.querySelector(".page-left");
   const pageRight = document.querySelector(".page-right");
 
@@ -88,12 +89,12 @@ OBR.onReady(async () => {
     pageRight.addEventListener("click", (event: Event) => {
       if (event && event.target) {
         const target = event.target as HTMLTextAreaElement
-        if (!target.classList.contains("disabled") && currentPage < 4) {
+        const maxPages = Math.ceil(orderedConditions.length / PAGE_SIZE);
+        if (!target.classList.contains("disabled") && currentPage < maxPages) {
           currentPage += 1;
           showPage();
         }
       }
-      focusSearchBar();
     });
   }
 
@@ -114,7 +115,7 @@ OBR.onReady(async () => {
   // Attach keydown listener to close popover on "Escape" pressed
   document.addEventListener('keydown', (event) => {
     if (event.key === "Escape") {
-        OBR.popover.close(getPluginId("condition-markers"));
+      OBR.popover.close(getPluginId("condition-markers"));
     } else if (
       hoveredCondition &&
       event.key >= "0" &&
@@ -129,27 +130,66 @@ OBR.onReady(async () => {
       void setConditionMarkerNumber(hoveredCondition, event.key);
     }
   });
+
 });
 
 async function loadConditions() {
   const conditionsArea = document.querySelector(".conditions-area");
 
   if (conditionsArea) {
+    // Determine which conditions are active on the current selection and
+    // place those conditions first in the UI (and on the first page)
+    const [allItems, selection, conditionMarkers] = await Promise.all([
+      OBR.scene.items.getItems(),
+      OBR.player.getSelection(),
+      // get condition markers already in the scene
+      OBR.scene.items.getItems<Image>(item => {
+        const metadata = item.metadata[getPluginId("metadata")];
+        return Boolean(isPlainObject(metadata) && metadata.enabled);
+      }),
+    ]);
+
+    const selectedConditions = new Set<string>();
+    if (selection && selection.length > 0) {
+      for (const marker of conditionMarkers) {
+        if (marker.attachedTo && selection.includes(marker.attachedTo)) {
+          const conditionName = marker.name.replace("Condition Marker - ", "");
+          selectedConditions.add(conditionName);
+        }
+      }
+    }
+
+    // Keep original ordering within selected vs non-selected groups.
+    const selectedList = conditions.filter((c) => selectedConditions.has(c));
+    const otherList = conditions.filter((c) => !selectedConditions.has(c));
+
+    // orderedConditions is used for pagination (selected conditions first)
+    orderedConditions = [...selectedList, ...otherList];
+
+    // On initial open, show the first page so selected items are visible first.
+    // Do not force the first page on every reload (that prevented paging).
+    if (!initialized) {
+      currentPage = 1;
+      initialized = true;
+    }
+
+    currentConditions = orderedConditions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
     conditionsArea.innerHTML = `
         ${currentConditions
-          .map(
-            (condition) =>
-              `<button class="condition-button" id="${condition}">
+        .map(
+          (condition) =>
+            `<button class="condition-button" id="${condition}">
                 <div class="condition">
                   <img src="${getImage(condition)}"/>
                 </div>
                 <div class="selected-icon" id="${condition}Select"></div>
                 <div class="condition-name"><p>${condition}</p></div>
               </button>`
-          )
-          .join("")}
+        )
+        .join("")}
     `;
-  
+
     // Attach click and hover listeners
     const conditionButtons = document.querySelectorAll<HTMLButtonElement>(".condition-button");
 
@@ -174,7 +214,6 @@ async function loadConditions() {
       });
     });
 
-    const allItems = await OBR.scene.items.getItems();
     updateConditionButtons(allItems);
   }
 }
@@ -184,28 +223,24 @@ function showPage() {
   const pageRight = document.querySelector(".page-right") as HTMLDivElement;
 
   if (pageLeft && pageRight) {
-    switch (currentPage) {
-      case 1:
-        disablePage(pageLeft);
-        enablePage(pageRight);
-        currentConditions = conditions.slice(0, PAGE_SIZE);
-        break;
-      case 2:
-        enablePage(pageLeft);
-        enablePage(pageRight);
-        currentConditions = conditions.slice(PAGE_SIZE, PAGE_SIZE * 2);
-        break;
-      case 3:
-        enablePage(pageLeft);
-        enablePage(pageRight);
-        currentConditions = conditions.slice(PAGE_SIZE * 2, PAGE_SIZE * 3);
-        break;
-      case 4:
-        enablePage(pageLeft);
-        disablePage(pageRight);
-        currentConditions = conditions.slice(PAGE_SIZE * 3, PAGE_SIZE * 4);
-        break;
+    const maxPages = Math.ceil(orderedConditions.length / PAGE_SIZE);
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const endIndex = currentPage * PAGE_SIZE;
+
+    // Disable/enable navigation buttons based on current page
+    if (currentPage === 1) {
+      disablePage(pageLeft);
+    } else {
+      enablePage(pageLeft);
     }
+
+    if (currentPage === maxPages) {
+      disablePage(pageRight);
+    } else {
+      enablePage(pageRight);
+    }
+
+    currentConditions = orderedConditions.slice(startIndex, endIndex);
     loadConditions();
   }
 }
@@ -254,7 +289,8 @@ async function filterConditions(filterString: string) {
   }
 
   for (const condition of conditions) {
-    if (condition.toLowerCase().replace("-", "").replace("'", "").includes(filterString.toLowerCase())) {      const button = document.createElement("button");
+    if (condition.toLowerCase().replace("-", "").replace("'", "").includes(filterString.toLowerCase())) {
+      const button = document.createElement("button");
       button.className = "condition-button";
       button.id = condition;
 
@@ -283,6 +319,7 @@ async function filterConditions(filterString: string) {
       });
 
       button.addEventListener("mouseover", () => {
+        hoveredCondition = button.id;
         const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
         if (conditionName) {
           conditionName.style.visibility = "visible";
@@ -371,8 +408,7 @@ async function handleButtonClick(button: HTMLButtonElement) {
 
 //focus search bar
 function focusSearchBar() {
-  (document.getElementById("search-bar") as HTMLInputElement)?.select();
-}
+
 
 // Prevent errors when many items are added at onces
 const MAX_UPDATE_LENGTH = 40;
