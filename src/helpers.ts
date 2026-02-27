@@ -252,6 +252,7 @@ export async function setConditionMarkerNumber(
         .textType("PLAIN")
         .position(marker.position)
         .attachedTo(marker.id)
+        .locked(true)
         .layer("ATTACHMENT")
         .fontSize(fontSize)
         .textAlign("CENTER")
