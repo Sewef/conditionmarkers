@@ -10,6 +10,49 @@ export function isPlainObject(
   );
 }
 
+/**
+ * Cache for image dimensions to avoid reloading images repeatedly
+ */
+const imageDimensionsCache = new Map<string, { width: number; height: number }>();
+
+/**
+ * Dynamically detect the actual dimensions of an image
+ * Falls back to a default size if image cannot be loaded
+ */
+async function getImageDimensions(imageUrl: string): Promise<{ width: number; height: number }> {
+  // Return cached dimensions if available
+  if (imageDimensionsCache.has(imageUrl)) {
+    return imageDimensionsCache.get(imageUrl)!;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timeout = setTimeout(() => {
+      console.warn(`Image load timeout for: ${imageUrl}, using default size`);
+      const defaultDimensions = { width: 512, height: 512 };
+      imageDimensionsCache.set(imageUrl, defaultDimensions);
+      resolve(defaultDimensions);
+    }, 5000);
+
+    img.onload = () => {
+      clearTimeout(timeout);
+      const dimensions = { width: img.naturalWidth, height: img.naturalHeight };
+      imageDimensionsCache.set(imageUrl, dimensions);
+      resolve(dimensions);
+    };
+
+    img.onerror = () => {
+      clearTimeout(timeout);
+      console.warn(`Failed to load image: ${imageUrl}, using default size`);
+      const defaultDimensions = { width: 512, height: 512 };
+      imageDimensionsCache.set(imageUrl, defaultDimensions);
+      resolve(defaultDimensions);
+    };
+
+    img.src = imageUrl;
+  });
+}
+
 /** Update the selected state of the condition buttons */
 export async function updateConditionButtons(items: Item[], selection?: string[]) {
   if (selection === undefined) selection = await OBR.player.getSelection();
@@ -42,18 +85,21 @@ export async function buildConditionMarker(
   const sceneDpi = await OBR.scene.grid.getDpi();
   const imageUrl = `${__API_BASE_URL__}/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.webp`;
 
+  // Dynamically detect the actual image dimensions
+  // const imageDimensions = await getImageDimensions(imageUrl);
+  const imageDimensions = { width: 512, height: 512 };
+
   // Setup marker grid
-  const CONDITION_DPI = sceneDpi;
   const markerImage = {
-    width: CONDITION_DPI,
-    height: CONDITION_DPI,
-    mime: "image/jpg",
+    width: imageDimensions.width,
+    height: imageDimensions.height,
+    mime: "image/webp",
     url: imageUrl,
   }
-  const desiredLength = sceneDpi * 0.25;
+  const desiredLength = sceneDpi * 0.275;
   const imageGrid: ImageGrid = {
-    offset: { x: 0, y: CONDITION_DPI / 2 },
-    dpi: (sceneDpi * CONDITION_DPI) / desiredLength,
+    offset: { x: 0, y: imageDimensions.height / 2 },
+    dpi: (sceneDpi * imageDimensions.width) / desiredLength,
   }
 
   const builtMarker = buildImage(markerImage, imageGrid)
