@@ -2,14 +2,6 @@ import OBR, { Image, isImage } from "@owlbear-rodeo/sdk";
 import { getPluginId } from "./getPluginId";
 import { buildConditionMarker, isPlainObject, repositionConditionMarker, setConditionLabelForToken } from "./helpers";
 
-let SELF_ID_PROMISE: Promise<string> | null = null;
-async function getSelfId() {
-  if (!SELF_ID_PROMISE) {
-    SELF_ID_PROMISE = OBR.player.getId();
-  }
-  return SELF_ID_PROMISE;
-}
-
 // Name of the api request and response channels
 const API_REQUEST_CHANNEL = "conditionmarkers.api.request";
 const API_RESPONSE_CHANNEL = "conditionmarkers.api.response";
@@ -18,13 +10,13 @@ const API_RESPONSE_CHANNEL = "conditionmarkers.api.response";
 export function setupConditionMarkersApi() {
   OBR.broadcast.onMessage(API_REQUEST_CHANNEL, async (evt) => {
     const req = evt.data as any;
-    if (!req || !req.callId || !req.requesterId) {
+    if (!req || !req.callId) {
       console.warn("[API] Invalid request payload", req);
       return;
     }
 
     // Expect `condition` in requests
-    const base = { callId: req.callId, requesterId: req.requesterId, tokenId: req.tokenId, condition: req.condition };
+    const base = { callId: req.callId, tokenId: req.tokenId, condition: req.condition };
 
     try {
       if (!req.action || (req.action !== "add" && req.action !== "remove")) {
@@ -109,7 +101,6 @@ export function setupConditionMarkersApi() {
 
 // --- Client ---
 async function sendApiAction(action: "add" | "remove", tokenId: string, condition: string, value?: string, timeoutMs = 5000) {
-  const requesterId = await getSelfId();
   const callId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   let timeoutId: any;
@@ -118,14 +109,14 @@ async function sendApiAction(action: "add" | "remove", tokenId: string, conditio
     const handler = (evt: any) => {
       const res = evt.data;
       if (!res) return;
-      if (res.callId !== callId || res.requesterId !== requesterId) return;
+      if (res.callId !== callId) return;
       clearTimeout(timeoutId);
       resolve(res);
     };
     OBR.broadcast.onMessage(API_RESPONSE_CHANNEL, handler);
   });
 
-  await OBR.broadcast.sendMessage(API_REQUEST_CHANNEL, { callId, requesterId, action, tokenId, condition, value }, { destination: "LOCAL" });
+  await OBR.broadcast.sendMessage(API_REQUEST_CHANNEL, { callId, action, tokenId, condition, value }, { destination: "LOCAL" });
 
   return new Promise((resolve, reject) => {
     timeoutId = setTimeout(() => {
