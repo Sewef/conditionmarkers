@@ -13,12 +13,13 @@ export function isPlainObject(
 /**
  * Cache for image dimensions to avoid reloading images repeatedly
  */
-const imageDimensionsCache = new Map<string, { width: number; height: number }>();
+// const imageDimensionsCache = new Map<string, { width: number; height: number }>();
 
 /**
  * Dynamically detect the actual dimensions of an image
  * Falls back to a default size if image cannot be loaded
  */
+/**
 async function getImageDimensions(imageUrl: string): Promise<{ width: number; height: number }> {
   // Return cached dimensions if available
   if (imageDimensionsCache.has(imageUrl)) {
@@ -52,6 +53,7 @@ async function getImageDimensions(imageUrl: string): Promise<{ width: number; he
     img.src = imageUrl;
   });
 }
+*/
 
 /** Update the selected state of the condition buttons */
 export async function updateConditionButtons(items: Item[], selection?: string[]) {
