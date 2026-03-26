@@ -33,6 +33,7 @@ export const conditions = [
   "Shield",
   "Sleep",
   "Slowed",
+  "Stratagem",
   "Stucked",
   "Substituted",
   "Suppressed",
