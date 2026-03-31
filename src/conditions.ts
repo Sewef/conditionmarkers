@@ -3,6 +3,7 @@ export const conditions = [
   "Badly Poisoned",
   "Bad Sleep",
   "Bandaged",
+  "Bleeding",
   "Blinded",
   "Block",
   "Buff",
