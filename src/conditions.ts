@@ -20,6 +20,7 @@ export const conditions = [
   "Flinched",
   "Frozen",
   "Grappled",
+  "Heal Block",
   "Hunter's Mark",
   "Infatuation",
   "Invisible",
