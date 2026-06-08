@@ -51,13 +51,45 @@ async function addCondition(tokenId: string, condition: string) {
 
   const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
   if (!conditionsList.includes(condition)) {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "addCondition", data: { tokenId, condition, response: { success: false, message: "Invalid condition" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "addCondition",
+        data: {
+          tokenId,
+          condition,
+          response: {
+            success: false,
+            message: "Invalid condition"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
     return;
   }
 
   const exists = markers.some((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
   if (exists) {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "addCondition", data: { tokenId, condition, response: { success: false, message: "Condition already exists on token" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "addCondition",
+        data: {
+          tokenId,
+          condition,
+          response: {
+            success: false,
+            message: "Invalid condition"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
     return;
   }
 
@@ -65,7 +97,23 @@ async function addCondition(tokenId: string, condition: string) {
   const target = targetItems[0];
 
   if (!target) {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "addCondition", data: { tokenId, condition, response: { success: false, message: "Token not found" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "addCondition",
+        data: {
+          tokenId,
+          condition,
+          response: {
+            success: false,
+            message: "Token not found"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
     return;
   }
 
@@ -79,7 +127,23 @@ async function removeCondition(tokenId: string, condition: string) {
 
   const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
   if (!conditionsList.includes(condition)) {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "removeCondition", data: { tokenId, condition, response: { success: false, message: "Invalid condition" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "removeCondition",
+        data: {
+          tokenId,
+          condition,
+          response: {
+            success: false,
+            message: "Invalid condition"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
     return;
   }
 
@@ -89,7 +153,23 @@ async function removeCondition(tokenId: string, condition: string) {
   const target = targetItems[0];
 
   if (!target) {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "removeCondition", data: { tokenId, condition, response: { success: false, message: "Token not found" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "removeCondition",
+        data: {
+          tokenId,
+          condition,
+          response: {
+            success: false,
+            message: "Token not found"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
     return;
   }
 
@@ -98,7 +178,23 @@ async function removeCondition(tokenId: string, condition: string) {
     await repositionConditionMarker([target]);
   }
   else {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "removeCondition", data: { tokenId, condition, response: { success: false, message: "Condition not found on token" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "removeCondition",
+        data: {
+          tokenId,
+          condition,
+          response: {
+            success: false,
+            message: "Condition not found on token"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
   }
 }
 
@@ -107,17 +203,67 @@ async function removeAllConditions(tokenId: string) {
   const toDelete = markers.filter((m) => m.attachedTo === tokenId);
   const targetItems = await OBR.scene.items.getItems<Image>((item) => item.id === tokenId);
   const target = targetItems[0];
+
   if (!target) {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "removeAllConditions", data: { tokenId, response: { success: false, message: "Token not found" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "removeAllConditions",
+        data:
+        {
+          tokenId,
+          response:
+          {
+            success: false,
+            message: "Token not found"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
     return;
   }
   if (toDelete.length > 0) {
     await OBR.scene.items.deleteItems(toDelete.map((m) => m.id));
     await repositionConditionMarker([target]);
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "removeAllConditions", data: { tokenId, response: { success: true } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "removeAllConditions",
+        data:
+        {
+          tokenId,
+          response:
+          {
+            success: true
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
   }
   else {
-    OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "removeAllConditions", data: { tokenId, response: { success: false, message: "No conditions found on token" } } }, { destination: "LOCAL" });
+    OBR.broadcast.sendMessage(
+      API_RESPONSE_CHANNEL,
+      {
+        action: "removeAllConditions",
+        data: {
+          tokenId,
+          response:
+          {
+            success: false,
+            message: "No conditions found on token"
+          }
+        }
+      },
+      {
+        destination: "LOCAL"
+      }
+    );
   }
 }
 
@@ -125,10 +271,30 @@ async function getTokenConditions(tokenId: string) {
   const markers = await OBR.scene.items.getItems<Image>(isConditionMarker);
   const tokenMarkers = markers.filter((m) => m.attachedTo === tokenId);
   const tokenConditions = tokenMarkers.map((m) => m.name.replace("Condition Marker - ", ""));
-  await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "getTokenConditions", data: tokenConditions }, { destination: "LOCAL" });
+
+  await OBR.broadcast.sendMessage(
+    API_RESPONSE_CHANNEL,
+    {
+      action: "getTokenConditions",
+      data: tokenConditions
+    },
+    {
+      destination: "LOCAL"
+    }
+  );
 }
 
 async function getAvailableConditions() {
   const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
-  await OBR.broadcast.sendMessage(API_RESPONSE_CHANNEL, { action: "getAvailableConditions", data: conditionsList }, { destination: "LOCAL" });
+
+  await OBR.broadcast.sendMessage(
+    API_RESPONSE_CHANNEL,
+    {
+      action: "getAvailableConditions",
+      data: conditionsList
+    },
+    {
+      destination: "LOCAL"
+    }
+  );
 }
