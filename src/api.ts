@@ -18,7 +18,11 @@ type responseMessage = {
   data?: Record<string, string>;
 };
 
-const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
+function normalizeCondition(conditionArray: string[]): string[] {
+  return conditionArray.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
+}
+
+const conditionsList = normalizeCondition(conditions);
 
 async function sendApiResponse(message: responseMessage): Promise<void> {
   await OBR.broadcast.sendMessage(
@@ -225,8 +229,8 @@ async function getTokenConditions(tokenId: string) {
 
   const markers = allItems.filter(isConditionMarker);
   const tokenMarkers = markers.filter((m) => m.attachedTo === tokenId);
-  const tokenConditions = tokenMarkers.map((m) => m.name.replace("Condition Marker - ", ""));
-
+  const tokenConditions = normalizeCondition(tokenMarkers.map((m) => m.name.replace("Condition Marker - ", "")));
+  
   await sendApiResponse({
     action: "getTokenConditions",
     success: true,
