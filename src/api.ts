@@ -6,6 +6,28 @@ import { buildConditionMarker, isPlainObject, repositionConditionMarker } from "
 const API_REQUEST_CHANNEL = getPluginId("api.request");
 const API_RESPONSE_CHANNEL = getPluginId("api.response");
 
+type requestMessage = {
+  action: string;
+  data?: Record<string, string>;
+};
+
+type responseMessage = {
+  action: string;
+  success: boolean;
+  message?: string;
+  data?: string[];
+};
+
+const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
+
+async function sendApiResponse(message: responseMessage): Promise<void> {
+  await OBR.broadcast.sendMessage(
+    API_RESPONSE_CHANNEL,
+    message,
+    { destination: "LOCAL" }
+  );
+}
+
 function isConditionMarker(item: any): boolean {
   if (!isImage(item)) return false;
   const metadata = item.metadata[getPluginId("metadata")];
@@ -14,27 +36,27 @@ function isConditionMarker(item: any): boolean {
 
 export function setupConditionMarkersApi() {
   OBR.broadcast.onMessage(API_REQUEST_CHANNEL, async (evt) => {
-    const { action, parameters } = evt.data as any;
+    const { action, data } = evt.data as requestMessage;
     if (!action) return;
 
     switch (action) {
       case "addCondition": {
-        const { tokenId, condition } = parameters as { tokenId: string; condition: string; };
+        const { tokenId, condition } = data as { tokenId: string; condition: string; };
         await addCondition(tokenId, condition);
         break;
       }
       case "removeCondition": {
-        const { tokenId, condition } = parameters as { tokenId: string; condition: string; };
+        const { tokenId, condition } = data as { tokenId: string; condition: string; };
         await removeCondition(tokenId, condition);
         break;
       }
       case "removeAllConditions": {
-        const { tokenId } = parameters as { tokenId: string; };
+        const { tokenId } = data as { tokenId: string; };
         await removeAllConditions(tokenId);
         break;
       }
       case "getTokenConditions": {
-        const { tokenId } = parameters as { tokenId: string; };
+        const { tokenId } = data as { tokenId: string; };
         await getTokenConditions(tokenId);
         break;
       }
@@ -47,224 +69,130 @@ export function setupConditionMarkersApi() {
 }
 
 async function addCondition(tokenId: string, condition: string) {
-  const markers = await OBR.scene.items.getItems<Image>(isConditionMarker);
-
-  const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
   if (!conditionsList.includes(condition)) {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "addCondition",
-        data: {
-          tokenId,
-          condition,
-          response: {
-            success: false,
-            message: "Invalid condition"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
+    await sendApiResponse({
+      action: "addCondition",
+      success: false,
+      message: "Invalid condition",
+      data: [tokenId, condition]
+    });
+    return;
+  }
+
+  const allItems = await OBR.scene.items.getItems<Image>();
+  const target = allItems.find((item) => item.id === tokenId);
+  const markers = allItems.filter(isConditionMarker);
+
+  if (!target) {
+    await sendApiResponse({
+      action: "addCondition",
+      success: false,
+      message: "Token not found",
+      data: [tokenId, condition]
+    });
     return;
   }
 
   const exists = markers.some((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
   if (exists) {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "addCondition",
-        data: {
-          tokenId,
-          condition,
-          response: {
-            success: false,
-            message: "Invalid condition"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
-    return;
-  }
-
-  const targetItems = await OBR.scene.items.getItems<Image>((item) => item.id === tokenId);
-  const target = targetItems[0];
-
-  if (!target) {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "addCondition",
-        data: {
-          tokenId,
-          condition,
-          response: {
-            success: false,
-            message: "Token not found"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
+    await sendApiResponse({
+      action: "addCondition",
+      success: false,
+      message: "Condition already exists on token",
+      data: [tokenId, condition]
+    });
     return;
   }
 
   const builtMarker = await buildConditionMarker(condition, target, markers.filter(m => m.attachedTo === tokenId).length);
   await OBR.scene.items.addItems([builtMarker]);
   await repositionConditionMarker([target]);
+
+  await sendApiResponse({
+    action: "addCondition",
+    success: true,
+    data: [tokenId, condition]
+  });
 }
 
 async function removeCondition(tokenId: string, condition: string) {
-  const markers = await OBR.scene.items.getItems<Image>(isConditionMarker);
-
-  const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
   if (!conditionsList.includes(condition)) {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "removeCondition",
-        data: {
-          tokenId,
-          condition,
-          response: {
-            success: false,
-            message: "Invalid condition"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
+    await sendApiResponse({
+      action: "removeCondition",
+      success: false,
+      message: "Invalid condition",
+      data: [tokenId, condition]
+    });
     return;
   }
 
+  const allItems = await OBR.scene.items.getItems<Image>();
+  const target = allItems.find((item) => item.id === tokenId);
+  const markers = allItems.filter(isConditionMarker);
   const toDelete = markers.filter((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
 
-  const targetItems = await OBR.scene.items.getItems<Image>((item) => item.id === tokenId);
-  const target = targetItems[0];
-
   if (!target) {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "removeCondition",
-        data: {
-          tokenId,
-          condition,
-          response: {
-            success: false,
-            message: "Token not found"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
+    await sendApiResponse({
+      action: "removeCondition",
+      success: false,
+      message: "Token not found",
+      data: [tokenId, condition]
+    });
     return;
   }
 
-  if (toDelete.length > 0) {
-    await OBR.scene.items.deleteItems(toDelete.map((m) => m.id));
-    await repositionConditionMarker([target]);
+  if (toDelete.length == 0) {
+    await sendApiResponse({
+      action: "removeCondition",
+      success: false,
+      message: "Condition not found on token",
+      data: [tokenId, condition]
+    });
+    return;
   }
-  else {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "removeCondition",
-        data: {
-          tokenId,
-          condition,
-          response: {
-            success: false,
-            message: "Condition not found on token"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
-  }
+
+  await OBR.scene.items.deleteItems(toDelete.map((m) => m.id));
+  await repositionConditionMarker([target]);
+  await sendApiResponse({
+    action: "removeCondition",
+    success: true,
+    data: [tokenId, condition]
+  });
 }
 
 async function removeAllConditions(tokenId: string) {
-  const markers = await OBR.scene.items.getItems<Image>(isConditionMarker);
+  const allItems = await OBR.scene.items.getItems<Image>();
+  const target = allItems.find((item) => item.id === tokenId);
+  const markers = allItems.filter(isConditionMarker);
   const toDelete = markers.filter((m) => m.attachedTo === tokenId);
-  const targetItems = await OBR.scene.items.getItems<Image>((item) => item.id === tokenId);
-  const target = targetItems[0];
 
   if (!target) {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "removeAllConditions",
-        data:
-        {
-          tokenId,
-          response:
-          {
-            success: false,
-            message: "Token not found"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
+    await sendApiResponse({
+      action: "removeAllConditions",
+      success: false,
+      message: "Token not found",
+      data: [tokenId]
+    });
     return;
   }
-  if (toDelete.length > 0) {
-    await OBR.scene.items.deleteItems(toDelete.map((m) => m.id));
-    await repositionConditionMarker([target]);
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "removeAllConditions",
-        data:
-        {
-          tokenId,
-          response:
-          {
-            success: true
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
+
+  if (toDelete.length == 0) {
+    await sendApiResponse({
+      action: "removeAllConditions",
+      success: false,
+      message: "No conditions found on token",
+      data: [tokenId]
+    });
+    return;
   }
-  else {
-    OBR.broadcast.sendMessage(
-      API_RESPONSE_CHANNEL,
-      {
-        action: "removeAllConditions",
-        data: {
-          tokenId,
-          response:
-          {
-            success: false,
-            message: "No conditions found on token"
-          }
-        }
-      },
-      {
-        destination: "LOCAL"
-      }
-    );
-  }
+
+  await OBR.scene.items.deleteItems(toDelete.map((m) => m.id));
+  await repositionConditionMarker([target]);
+  await sendApiResponse({
+    action: "removeAllConditions",
+    success: true,
+    data: [tokenId]
+  });
 }
 
 async function getTokenConditions(tokenId: string) {
@@ -272,29 +200,17 @@ async function getTokenConditions(tokenId: string) {
   const tokenMarkers = markers.filter((m) => m.attachedTo === tokenId);
   const tokenConditions = tokenMarkers.map((m) => m.name.replace("Condition Marker - ", ""));
 
-  await OBR.broadcast.sendMessage(
-    API_RESPONSE_CHANNEL,
-    {
-      action: "getTokenConditions",
-      data: tokenConditions
-    },
-    {
-      destination: "LOCAL"
-    }
-  );
+  await sendApiResponse({
+    action: "getTokenConditions",
+    success: true,
+    data: tokenConditions
+  });
 }
 
 async function getAvailableConditions() {
-  const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
-
-  await OBR.broadcast.sendMessage(
-    API_RESPONSE_CHANNEL,
-    {
-      action: "getAvailableConditions",
-      data: conditionsList
-    },
-    {
-      destination: "LOCAL"
-    }
-  );
+  await sendApiResponse({
+    action: "getAvailableConditions",
+    success: true,
+    data: conditionsList
+  });
 }
