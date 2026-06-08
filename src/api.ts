@@ -69,6 +69,7 @@ export function setupConditionMarkersApi() {
 }
 
 async function addCondition(tokenId: string, condition: string) {
+  // Validate condition
   if (!conditionsList.includes(condition)) {
     await sendApiResponse({
       action: "addCondition",
@@ -81,8 +82,8 @@ async function addCondition(tokenId: string, condition: string) {
 
   const allItems = await OBR.scene.items.getItems<Image>();
   const target = allItems.find((item) => item.id === tokenId);
-  const markers = allItems.filter(isConditionMarker);
 
+  // Check if token exists
   if (!target) {
     await sendApiResponse({
       action: "addCondition",
@@ -93,7 +94,10 @@ async function addCondition(tokenId: string, condition: string) {
     return;
   }
 
+  // Check if condition already exists on token
+  const markers = allItems.filter(isConditionMarker);
   const exists = markers.some((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
+
   if (exists) {
     await sendApiResponse({
       action: "addCondition",
@@ -104,6 +108,7 @@ async function addCondition(tokenId: string, condition: string) {
     return;
   }
 
+  // Add condition marker and reposition all markers on token
   const builtMarker = await buildConditionMarker(condition, target, markers.filter(m => m.attachedTo === tokenId).length);
   await OBR.scene.items.addItems([builtMarker]);
   await repositionConditionMarker([target]);
@@ -116,6 +121,7 @@ async function addCondition(tokenId: string, condition: string) {
 }
 
 async function removeCondition(tokenId: string, condition: string) {
+  // Validate condition
   if (!conditionsList.includes(condition)) {
     await sendApiResponse({
       action: "removeCondition",
@@ -128,9 +134,8 @@ async function removeCondition(tokenId: string, condition: string) {
 
   const allItems = await OBR.scene.items.getItems<Image>();
   const target = allItems.find((item) => item.id === tokenId);
-  const markers = allItems.filter(isConditionMarker);
-  const toDelete = markers.filter((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
 
+  // Check if token exists
   if (!target) {
     await sendApiResponse({
       action: "removeCondition",
@@ -140,7 +145,11 @@ async function removeCondition(tokenId: string, condition: string) {
     });
     return;
   }
+  
+  const markers = allItems.filter(isConditionMarker);
+  const toDelete = markers.filter((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
 
+  // Check if condition exists on token
   if (toDelete.length == 0) {
     await sendApiResponse({
       action: "removeCondition",
@@ -151,6 +160,7 @@ async function removeCondition(tokenId: string, condition: string) {
     return;
   }
 
+  // Remove condition marker and reposition remaining markers
   await OBR.scene.items.deleteItems(toDelete.map((m) => m.id));
   await repositionConditionMarker([target]);
   await sendApiResponse({
@@ -163,9 +173,8 @@ async function removeCondition(tokenId: string, condition: string) {
 async function removeAllConditions(tokenId: string) {
   const allItems = await OBR.scene.items.getItems<Image>();
   const target = allItems.find((item) => item.id === tokenId);
-  const markers = allItems.filter(isConditionMarker);
-  const toDelete = markers.filter((m) => m.attachedTo === tokenId);
 
+  // Check if token exists
   if (!target) {
     await sendApiResponse({
       action: "removeAllConditions",
@@ -175,7 +184,11 @@ async function removeAllConditions(tokenId: string) {
     });
     return;
   }
+  
+  const markers = allItems.filter(isConditionMarker);
+  const toDelete = markers.filter((m) => m.attachedTo === tokenId);
 
+  // Check if any conditions exist on token
   if (toDelete.length == 0) {
     await sendApiResponse({
       action: "removeAllConditions",
@@ -186,8 +199,8 @@ async function removeAllConditions(tokenId: string) {
     return;
   }
 
+  // Remove condition markers
   await OBR.scene.items.deleteItems(toDelete.map((m) => m.id));
-  await repositionConditionMarker([target]);
   await sendApiResponse({
     action: "removeAllConditions",
     success: true,
@@ -196,7 +209,21 @@ async function removeAllConditions(tokenId: string) {
 }
 
 async function getTokenConditions(tokenId: string) {
-  const markers = await OBR.scene.items.getItems<Image>(isConditionMarker);
+  const allItems = await OBR.scene.items.getItems<Image>();
+  const target = allItems.find((item) => item.id === tokenId);
+  
+  // Check if token exists
+  if (!target) {
+    await sendApiResponse({
+      action: "removeAllConditions",
+      success: false,
+      message: "Token not found",
+      data: [tokenId]
+    });
+    return;
+  }
+
+  const markers = allItems.filter(isConditionMarker);
   const tokenMarkers = markers.filter((m) => m.attachedTo === tokenId);
   const tokenConditions = tokenMarkers.map((m) => m.name.replace("Condition Marker - ", ""));
 
