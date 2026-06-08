@@ -15,7 +15,7 @@ type responseMessage = {
   action: string;
   success: boolean;
   message?: string;
-  data?: string[];
+  data?: Record<string, string>;
 };
 
 const conditionsList = conditions.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
@@ -75,7 +75,7 @@ async function addCondition(tokenId: string, condition: string) {
       action: "addCondition",
       success: false,
       message: "Invalid condition",
-      data: [tokenId, condition]
+      data: { tokenId, condition }
     });
     return;
   }
@@ -89,7 +89,7 @@ async function addCondition(tokenId: string, condition: string) {
       action: "addCondition",
       success: false,
       message: "Token not found",
-      data: [tokenId, condition]
+      data: { tokenId, condition }
     });
     return;
   }
@@ -103,7 +103,7 @@ async function addCondition(tokenId: string, condition: string) {
       action: "addCondition",
       success: false,
       message: "Condition already exists on token",
-      data: [tokenId, condition]
+      data: { tokenId, condition }
     });
     return;
   }
@@ -116,7 +116,7 @@ async function addCondition(tokenId: string, condition: string) {
   await sendApiResponse({
     action: "addCondition",
     success: true,
-    data: [tokenId, condition]
+    data: { tokenId, condition }
   });
 }
 
@@ -127,7 +127,7 @@ async function removeCondition(tokenId: string, condition: string) {
       action: "removeCondition",
       success: false,
       message: "Invalid condition",
-      data: [tokenId, condition]
+      data: { tokenId, condition }
     });
     return;
   }
@@ -141,7 +141,7 @@ async function removeCondition(tokenId: string, condition: string) {
       action: "removeCondition",
       success: false,
       message: "Token not found",
-      data: [tokenId, condition]
+      data: { tokenId, condition }
     });
     return;
   }
@@ -155,7 +155,7 @@ async function removeCondition(tokenId: string, condition: string) {
       action: "removeCondition",
       success: false,
       message: "Condition not found on token",
-      data: [tokenId, condition]
+      data: { tokenId, condition }
     });
     return;
   }
@@ -166,7 +166,7 @@ async function removeCondition(tokenId: string, condition: string) {
   await sendApiResponse({
     action: "removeCondition",
     success: true,
-    data: [tokenId, condition]
+    data: { tokenId, condition }
   });
 }
 
@@ -180,7 +180,7 @@ async function removeAllConditions(tokenId: string) {
       action: "removeAllConditions",
       success: false,
       message: "Token not found",
-      data: [tokenId]
+      data: { tokenId }
     });
     return;
   }
@@ -194,7 +194,7 @@ async function removeAllConditions(tokenId: string) {
       action: "removeAllConditions",
       success: false,
       message: "No conditions found on token",
-      data: [tokenId]
+      data: { tokenId }
     });
     return;
   }
@@ -204,7 +204,7 @@ async function removeAllConditions(tokenId: string) {
   await sendApiResponse({
     action: "removeAllConditions",
     success: true,
-    data: [tokenId]
+    data: { tokenId }
   });
 }
 
@@ -215,10 +215,10 @@ async function getTokenConditions(tokenId: string) {
   // Check if token exists
   if (!target) {
     await sendApiResponse({
-      action: "removeAllConditions",
+      action: "getTokenConditions",
       success: false,
       message: "Token not found",
-      data: [tokenId]
+      data: { tokenId }
     });
     return;
   }
@@ -230,7 +230,7 @@ async function getTokenConditions(tokenId: string) {
   await sendApiResponse({
     action: "getTokenConditions",
     success: true,
-    data: tokenConditions
+    data: { conditions: tokenConditions.join(",") }
   });
 }
 
@@ -238,6 +238,6 @@ async function getAvailableConditions() {
   await sendApiResponse({
     action: "getAvailableConditions",
     success: true,
-    data: conditionsList
+    data: { conditions: conditionsList.join(",") }
   });
 }
