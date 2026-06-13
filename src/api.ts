@@ -6,17 +6,62 @@ import { buildConditionMarker, isPlainObject, repositionConditionMarker } from "
 const API_REQUEST_CHANNEL = getPluginId("api.request");
 const API_RESPONSE_CHANNEL = getPluginId("api.response");
 
-type requestMessage = {
-  action: string;
-  data?: Record<string, string>;
-};
+type RequestMessage =
+  | {
+    action: "addCondition" | "removeCondition";
+    data: { tokenId: string; condition: string };
+  }
+  | {
+    action: "removeAllConditions" | "getTokenConditions";
+    data: { tokenId: string };
+  }
+  | {
+    action: "getAvailableConditions";
+  };
 
-type responseMessage = {
-  action: string;
-  success: boolean;
-  message?: string;
-  data?: Record<string, string>;
-};
+type ResponseMessage =
+  | ({
+    action: "addCondition" | "removeCondition";
+    data: { tokenId: string; condition: string };
+  } & (
+      | {
+        success: false;
+        message: string;
+      }
+      | {
+        success: true;
+      }
+    ))
+  | ({
+    action: "removeAllConditions";
+    data: { tokenId: string };
+  } & (
+      | {
+        success: false;
+        message: string;
+      }
+      | {
+        success: true;
+      }
+    ))
+  | ({
+    action: "getTokenConditions";
+  } & (
+      | {
+        success: false;
+        message: string;
+      }
+      | {
+        success: true;
+        data: { conditions: string[] };
+      }
+    ))
+  | {
+    action: "getAvailableConditions";
+    success: true;
+    data: { conditions: string[] };
+  };
+
 
 function normalizeCondition(conditionArray: string[]): string[] {
   return conditionArray.map((item) => item.replace(/['-]/g, "").replace(/[_]/g, " "));
@@ -24,7 +69,7 @@ function normalizeCondition(conditionArray: string[]): string[] {
 
 const conditionsList = normalizeCondition(conditions);
 
-async function sendApiResponse(message: responseMessage): Promise<void> {
+async function sendApiResponse(message: ResponseMessage): Promise<void> {
   await OBR.broadcast.sendMessage(
     API_RESPONSE_CHANNEL,
     message,
@@ -40,27 +85,27 @@ function isConditionMarker(item: any): boolean {
 
 export function setupConditionMarkersApi() {
   OBR.broadcast.onMessage(API_REQUEST_CHANNEL, async (evt) => {
-    const { action, data } = evt.data as requestMessage;
-    if (!action) return;
+    const message = evt.data as RequestMessage;
+    if (!message.action) return;
 
-    switch (action) {
+    switch (message.action) {
       case "addCondition": {
-        const { tokenId, condition } = data as { tokenId: string; condition: string; };
+        const { tokenId, condition } = message.data;
         await addCondition(tokenId, condition);
         break;
       }
       case "removeCondition": {
-        const { tokenId, condition } = data as { tokenId: string; condition: string; };
+        const { tokenId, condition } = message.data;
         await removeCondition(tokenId, condition);
         break;
       }
       case "removeAllConditions": {
-        const { tokenId } = data as { tokenId: string; };
+        const { tokenId } = message.data;
         await removeAllConditions(tokenId);
         break;
       }
       case "getTokenConditions": {
-        const { tokenId } = data as { tokenId: string; };
+        const { tokenId } = message.data;
         await getTokenConditions(tokenId);
         break;
       }
@@ -149,7 +194,7 @@ async function removeCondition(tokenId: string, condition: string) {
     });
     return;
   }
-  
+
   const markers = allItems.filter(isConditionMarker);
   const toDelete = markers.filter((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
 
@@ -188,7 +233,7 @@ async function removeAllConditions(tokenId: string) {
     });
     return;
   }
-  
+
   const markers = allItems.filter(isConditionMarker);
   const toDelete = markers.filter((m) => m.attachedTo === tokenId);
 
@@ -215,14 +260,13 @@ async function removeAllConditions(tokenId: string) {
 async function getTokenConditions(tokenId: string) {
   const allItems = await OBR.scene.items.getItems<Image>();
   const target = allItems.find((item) => item.id === tokenId);
-  
+
   // Check if token exists
   if (!target) {
     await sendApiResponse({
       action: "getTokenConditions",
       success: false,
-      message: "Token not found",
-      data: { tokenId }
+      message: "Token not found"
     });
     return;
   }
@@ -230,11 +274,11 @@ async function getTokenConditions(tokenId: string) {
   const markers = allItems.filter(isConditionMarker);
   const tokenMarkers = markers.filter((m) => m.attachedTo === tokenId);
   const tokenConditions = normalizeCondition(tokenMarkers.map((m) => m.name.replace("Condition Marker - ", "")));
-  
+
   await sendApiResponse({
     action: "getTokenConditions",
     success: true,
-    data: { conditions: tokenConditions.join(",") }
+    data: { conditions: tokenConditions }
   });
 }
 
@@ -242,6 +286,6 @@ async function getAvailableConditions() {
   await sendApiResponse({
     action: "getAvailableConditions",
     success: true,
-    data: { conditions: conditionsList.join(",") }
+    data: { conditions: conditionsList }
   });
 }
