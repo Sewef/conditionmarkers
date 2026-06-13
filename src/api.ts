@@ -83,10 +83,35 @@ function isConditionMarker(item: any): boolean {
   return Boolean(isPlainObject(metadata) && metadata?.enabled);
 }
 
+function isValidRequestMessage(data: any): data is RequestMessage {
+  if (!data?.action) return false;
+  
+  switch (data.action) {
+    case "addCondition":
+    case "removeCondition":
+      return typeof data.data?.tokenId === "string" && typeof data.data?.condition === "string";
+    case "removeAllConditions":
+    case "getTokenConditions":
+      return typeof data.data?.tokenId === "string";
+    case "getAvailableConditions":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function setupConditionMarkersApi() {
   OBR.broadcast.onMessage(API_REQUEST_CHANNEL, async (evt) => {
-    const message = evt.data as RequestMessage;
-    if (!message.action) return;
+    if (!isValidRequestMessage(evt.data)) {
+      await sendApiResponse({
+        action: (evt.data as any)?.action || "unknown",
+        success: false,
+        message: "Invalid request message format"
+      });
+      return;
+    }
+    
+    const message = evt.data;
 
     switch (message.action) {
       case "addCondition": {
