@@ -15,6 +15,7 @@ export const conditions = [
   "Corrupted",
   "Curled Up",
   "Cursed",
+  "Danger",
   "Debuff",
   "Fainted",
   "Flinched",
