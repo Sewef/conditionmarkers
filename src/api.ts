@@ -1,15 +1,19 @@
 import OBR, { Image, isImage } from "@owlbear-rodeo/sdk";
 import { getPluginId } from "./getPluginId";
 import { conditions } from "./conditions";
-import { buildConditionMarker, isPlainObject, repositionConditionMarker } from "./helpers";
+import { buildConditionMarker, isPlainObject, repositionConditionMarker, setConditionLabelForToken } from "./helpers";
 
 const API_REQUEST_CHANNEL = getPluginId("api.request");
 const API_RESPONSE_CHANNEL = getPluginId("api.response");
 
 type RequestMessage =
   | {
-    action: "addCondition" | "removeCondition";
-    data: { tokenId: string; condition: string };
+    action: "addCondition";
+    data: { tokenId: string; condition: string; value?: number };
+  }
+  | {
+    action: "removeCondition";
+    data: { tokenId: string; condition: string; };
   }
   | {
     action: "removeAllConditions" | "getTokenConditions";
@@ -21,8 +25,20 @@ type RequestMessage =
 
 type ResponseMessage =
   | ({
-    action: "addCondition" | "removeCondition";
-    data: { tokenId: string; condition: string };
+    action: "addCondition";
+    data: { tokenId: string; condition: string; value?: number };
+  } & (
+      | {
+        success: false;
+        message: string;
+      }
+      | {
+        success: true;
+      }
+    ))
+  | ({
+    action: "removeCondition";
+    data: { tokenId: string; condition: string; };
   } & (
       | {
         success: false;
@@ -85,9 +101,14 @@ function isConditionMarker(item: any): boolean {
 
 function isValidRequestMessage(data: any): data is RequestMessage {
   if (!data?.action) return false;
-  
+
   switch (data.action) {
     case "addCondition":
+      return (
+        typeof data.data?.tokenId === "string" &&
+        typeof data.data?.condition === "string" &&
+        (typeof data.data?.value === "number" || data.data?.value === undefined)
+      );
     case "removeCondition":
       return typeof data.data?.tokenId === "string" && typeof data.data?.condition === "string";
     case "removeAllConditions":
@@ -110,13 +131,13 @@ export function setupConditionMarkersApi() {
       });
       return;
     }
-    
+
     const message = evt.data;
 
     switch (message.action) {
       case "addCondition": {
-        const { tokenId, condition } = message.data;
-        await addCondition(tokenId, condition);
+        const { tokenId, condition, value } = message.data;
+        await addCondition(tokenId, condition, value);
         break;
       }
       case "removeCondition": {
@@ -142,14 +163,14 @@ export function setupConditionMarkersApi() {
   });
 }
 
-async function addCondition(tokenId: string, condition: string) {
+async function addCondition(tokenId: string, condition: string, value?: number) {
   // Validate condition
   if (!conditionsList.includes(condition)) {
     await sendApiResponse({
       action: "addCondition",
       success: false,
       message: "Invalid condition",
-      data: { tokenId, condition }
+      data: { tokenId, condition, value }
     });
     return;
   }
@@ -163,7 +184,7 @@ async function addCondition(tokenId: string, condition: string) {
       action: "addCondition",
       success: false,
       message: "Token not found",
-      data: { tokenId, condition }
+      data: { tokenId, condition, value }
     });
     return;
   }
@@ -172,25 +193,32 @@ async function addCondition(tokenId: string, condition: string) {
   const markers = allItems.filter(isConditionMarker);
   const exists = markers.some((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
 
-  if (exists) {
+  if (exists && value === undefined) {
     await sendApiResponse({
       action: "addCondition",
       success: false,
       message: "Condition already exists on token",
-      data: { tokenId, condition }
+      data: { tokenId, condition, value }
     });
     return;
   }
 
   // Add condition marker and reposition all markers on token
-  const builtMarker = await buildConditionMarker(condition, target, markers.filter(m => m.attachedTo === tokenId).length);
-  await OBR.scene.items.addItems([builtMarker]);
+  if (!exists) {
+    const builtMarker = await buildConditionMarker(condition, target, markers.filter(m => m.attachedTo === tokenId).length);
+    await OBR.scene.items.addItems([builtMarker]);
+  }
+
   await repositionConditionMarker([target]);
+
+  if (value !== undefined) {
+    await setConditionLabelForToken(tokenId, condition, value);
+  }
 
   await sendApiResponse({
     action: "addCondition",
     success: true,
-    data: { tokenId, condition }
+    data: { tokenId, condition, value }
   });
 }
 

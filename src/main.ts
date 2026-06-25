@@ -13,7 +13,6 @@ let hoveredCondition: string | null = null;
 let orderedConditions: string[] = conditions.slice();
 let initialized = false;
 
-
 /**
  * This file represents the HTML of the popover that is shown once
  * the condition marker context menu item is clicked.
@@ -47,7 +46,6 @@ OBR.onReady(async () => {
   }
 
   loadConditions();
-
   // Attach input listeners
   const input = document.querySelector(".condition-filter") as HTMLTextAreaElement;
   const inputClear = document.querySelector(".clear-button") as HTMLButtonElement;
@@ -215,7 +213,6 @@ async function loadConditions() {
         }
       });
     });
-
 
     updateConditionButtons(allItems);
   }
