@@ -1,4 +1,4 @@
-import OBR, { Image, isImage } from "@owlbear-rodeo/sdk";
+import OBR, { Image, isImage, isText, Text } from "@owlbear-rodeo/sdk";
 import { getPluginId } from "./getPluginId";
 import { conditions } from "./conditions";
 import { buildConditionMarker, isPlainObject, repositionConditionMarker, setConditionLabelForToken } from "./helpers";
@@ -12,7 +12,7 @@ type RequestMessage =
     data: { tokenId: string; condition: string; value?: number };
   }
   | {
-    action: "removeCondition";
+    action: "removeCondition" | "getValue";
     data: { tokenId: string; condition: string; };
   }
   | {
@@ -46,6 +46,19 @@ type ResponseMessage =
       }
       | {
         success: true;
+      }
+    ))
+  | ({
+    action: "getValue";
+    data: { tokenId: string; condition: string; };
+  } & (
+      | {
+        success: false;
+        message: string;
+      }
+      | {
+        success: true;
+        data: { value: number | null };
       }
     ))
   | ({
@@ -110,6 +123,7 @@ function isValidRequestMessage(data: any): data is RequestMessage {
         (typeof data.data?.value === "number" || data.data?.value === undefined)
       );
     case "removeCondition":
+    case "getValue":
       return typeof data.data?.tokenId === "string" && typeof data.data?.condition === "string";
     case "removeAllConditions":
     case "getTokenConditions":
@@ -143,6 +157,11 @@ export function setupConditionMarkersApi() {
       case "removeCondition": {
         const { tokenId, condition } = message.data;
         await removeCondition(tokenId, condition);
+        break;
+      }
+      case "getValue": {
+        const { tokenId, condition } = message.data;
+        await getValue(tokenId, condition);
         break;
       }
       case "removeAllConditions": {
@@ -332,6 +351,67 @@ async function getTokenConditions(tokenId: string) {
     action: "getTokenConditions",
     success: true,
     data: { conditions: tokenConditions }
+  });
+}
+
+async function getValue(tokenId: string, condition: string) {
+  // Validate condition
+  if (!conditionsList.includes(condition)) {
+    await sendApiResponse({
+      action: "getValue",
+      success: false,
+      message: "Invalid condition",
+      data: { tokenId, condition }
+    });
+    return;
+  }
+
+  const allItems = await OBR.scene.items.getItems();
+  const target = allItems.find((item) => item.id === tokenId);
+
+  // Check if token exists
+  if (!target) {
+    await sendApiResponse({
+      action: "getValue",
+      success: false,
+      message: "Token not found",
+      data: { tokenId, condition }
+    });
+    return;
+  }
+
+  const markers = allItems.filter(isConditionMarker);
+  const marker = markers.find((m) => m.attachedTo === tokenId && m.name === `Condition Marker - ${condition}`);
+
+  // Check if condition exists on token
+  if (!marker) {
+    await sendApiResponse({
+      action: "getValue",
+      success: false,
+      message: "Condition not found on token",
+      data: { tokenId, condition }
+    });
+    return;
+  }
+
+  const labelMetadataKey = getPluginId("label");
+  const labels = allItems.filter((item): item is Text => {
+    const labelMetadata = item.metadata[labelMetadataKey];
+    return (
+      isText(item) &&
+      item.attachedTo === marker.id &&
+      isPlainObject(labelMetadata) &&
+      labelMetadata.condition === condition
+    );
+  });
+
+  const labelText = labels[0]?.text.plainText.trim();
+  const value = labelText === undefined || labelText === "" ? null : Number(labelText);
+
+  await sendApiResponse({
+    action: "getValue",
+    success: true,
+    data: { tokenId, condition, value: Number.isFinite(value) ? value : null }
   });
 }
 
