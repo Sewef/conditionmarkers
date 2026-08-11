@@ -88,7 +88,7 @@ export async function buildConditionMarker(
   // Dynamically detect the actual image dimensions
   // const imageDimensions = await getImageDimensions(imageUrl);
   const imageDimensions = { width: 512, height: 512 };
-  const imageUrl = `${window.origin}/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
+  const imageUrl = `${window.origin}/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.webp`;
 
   // Setup marker grid
   const markerImage = {

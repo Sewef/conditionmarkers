@@ -25,6 +25,7 @@ export const conditions = [
   "Hunter's Mark",
   "Infatuation",
   "Invisible",
+  "Liquefied",
   "Marked",
   "Ordered",
   "Paralysed",
