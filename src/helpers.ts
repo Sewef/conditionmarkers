@@ -85,11 +85,10 @@ export async function buildConditionMarker(
   attachedCount: number,
 ) {
   const sceneDpi = await OBR.scene.grid.getDpi();
-  const imageUrl = `${__API_BASE_URL__}/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.webp`;
-
   // Dynamically detect the actual image dimensions
   // const imageDimensions = await getImageDimensions(imageUrl);
   const imageDimensions = { width: 512, height: 512 };
+  const imageUrl = `${window.origin}/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.png`;
 
   // Setup marker grid
   const markerImage = {
