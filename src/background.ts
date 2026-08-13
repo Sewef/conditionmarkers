@@ -3,6 +3,7 @@ import { getPluginId } from "./getPluginId";
 
 import icon from "./icon.svg";
 import { setupConditionMarkersApi } from "./api";
+import { fixUrls } from "./fixUrls";
 
 /**
  * This file represents the background script run when the plugin loads.
@@ -11,6 +12,8 @@ import { setupConditionMarkersApi } from "./api";
 
 OBR.onReady(() => {
   setupConditionMarkersApi();
+
+  fixUrls();
 
   OBR.contextMenu.create({
     id: getPluginId("menu"),
