@@ -6,12 +6,70 @@ import "./style.css";
 import { getImage } from "./images";
 
 const PAGE_SIZE = 16;
+const NUMBER_INPUT_TIMEOUT_MS = 1000;
 
 let currentPage = 1;
 let currentConditions = conditions.slice(0, PAGE_SIZE);
 let hoveredCondition: string | null = null;
 let orderedConditions: string[] = conditions.slice();
 let initialized = false;
+let numberInputCondition: string | null = null;
+let numberInputBuffer = "";
+let lastNumberInputAt = 0;
+let markerNumberUpdate = Promise.resolve();
+
+function resetNumberInput() {
+  numberInputCondition = null;
+  numberInputBuffer = "";
+  lastNumberInputAt = 0;
+}
+
+function appendNumberInput(condition: string, digit: string) {
+  const now = Date.now();
+  const shouldAppend =
+    numberInputCondition === condition &&
+    now - lastNumberInputAt <= NUMBER_INPUT_TIMEOUT_MS;
+
+  numberInputBuffer = shouldAppend ? numberInputBuffer + digit : digit;
+  numberInputCondition = condition;
+  lastNumberInputAt = now;
+
+  return numberInputBuffer;
+}
+
+function updateHoveredMarkerNumber(condition: string, digit: string) {
+  const label = appendNumberInput(condition, digit);
+
+  // Keep rapid updates in order so a slower request cannot restore an older value.
+  markerNumberUpdate = markerNumberUpdate
+    .then(() => setConditionMarkerNumber(condition, label))
+    .catch((error) => console.error("Unable to update condition marker number", error));
+}
+
+function attachConditionButtonListeners(button: HTMLButtonElement) {
+  button.addEventListener("click", () => {
+    handleButtonClick(button);
+  });
+
+  button.addEventListener("mouseenter", () => {
+    hoveredCondition = button.id;
+    const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
+    if (conditionName) {
+      conditionName.style.visibility = "visible";
+    }
+  });
+
+  button.addEventListener("mouseleave", () => {
+    if (hoveredCondition === button.id) {
+      hoveredCondition = null;
+    }
+    resetNumberInput();
+    const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
+    if (conditionName) {
+      conditionName.style.visibility = "hidden";
+    }
+  });
+}
 
 /**
  * This file represents the HTML of the popover that is shown once
@@ -125,9 +183,9 @@ OBR.onReady(async () => {
       !event.metaKey &&
       document.activeElement?.id !== "search-bar"
     ) {
-      // Apply a numeric label to the hovered condition marker for the current selection
+      // Start a new value, or append to it when digits are typed in quick succession.
       event.preventDefault();
-      void setConditionMarkerNumber(hoveredCondition, event.key);
+      updateHoveredMarkerNumber(hoveredCondition, event.key);
     }
   });
 
@@ -194,24 +252,7 @@ async function loadConditions() {
     const conditionButtons = document.querySelectorAll<HTMLButtonElement>(".condition-button");
 
     conditionButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        handleButtonClick(button);
-      });
-
-      button.addEventListener("mouseover", () => {
-        hoveredCondition = button.id;
-        const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
-        if (conditionName) {
-          conditionName.style.visibility = "visible";
-        }
-      });
-
-      button.addEventListener("mouseout", () => {
-        const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
-        if (conditionName) {
-          conditionName.style.visibility = "hidden";
-        }
-      });
+      attachConditionButtonListeners(button);
     });
 
     updateConditionButtons(allItems);
@@ -313,26 +354,9 @@ async function filterConditions(filterString: string) {
 
       button.appendChild(selectedIcon);
       button.appendChild(conditionNameDiv);
-
-      button.addEventListener("click", () => {
-        handleButtonClick(button);
-      });
-
-      button.addEventListener("mouseover", () => {
-        hoveredCondition = button.id;
-        const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
-        if (conditionName) {
-          conditionName.style.visibility = "visible";
-        }
-      });
-
-      button.addEventListener("mouseout", () => {
-        const conditionName = button.querySelector<HTMLDivElement>(".condition-name");
-        if (conditionName) {
-          conditionName.style.visibility = "hidden";
-        }
-      });
-
+        
+      attachConditionButtonListeners(button);
+      
       const matchedMarkers = attachedMarkers.filter((marker) => marker.name.includes(condition));
       if (matchedMarkers.length !== 0) {
         selectedIcon.style.visibility = "visible";
