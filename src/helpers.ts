@@ -125,7 +125,7 @@ export async function buildConditionMarker(
  * Calculate the marker's position based on the token's position
  * and the number of other markers already attached
  */
-function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
+export function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
   // Arrange markers in a vertical column to the left of the token
   const markerGridPosition = {
     x: -1,
@@ -163,7 +163,7 @@ function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
 /**
  * Calculate the marker's scale based on the token's size
  */
-function getMarkerScale(imageItem: Image) {
+export function getMarkerScale(imageItem: Image) {
   // Use absolute value of the parent's scales to avoid mirroring the marker
   const absScale = { x: Math.abs(imageItem.scale.x), y: Math.abs(imageItem.scale.y) };
   const imageWidthGrid = imageItem.image.width / imageItem.grid.dpi; // width in grid units -> convert to scene when used
@@ -187,7 +187,7 @@ export async function repositionConditionMarker(imageItems: Image[]) {
     // Find all markers attached to this item
     attachedMarkers = conditionMarkers.filter(
       marker => marker.attachedTo === imageItem.id
-    );
+    ).sort((a, b) => a.id.localeCompare(b.id));
 
     // Get this marker's new position given it's new position in the grid
     const sceneDpi = await OBR.scene.grid.getDpi();
@@ -201,20 +201,24 @@ export async function repositionConditionMarker(imageItems: Image[]) {
   }
 
   // Reposition the markers in the scene based on their new grid positions
+  const updatesById = new Map(newMarker.map(marker => [marker.id, marker]));
+  if (updatesById.size === 0) return;
   await OBR.scene.items.updateItems(
     newMarker.map(marker => marker.id),
     images => {
-      for (let i = 0; i < images.length; i++) {
-        if (images[i].id !== newMarker[i].id) {
-          console.error("Condition marker ID mismatch, skipping item.");
-        } else {
-          images[i].position = newMarker[i].position;
+      for (const image of images) {
+        const update = updatesById.get(image.id);
+        if (update) {
+          image.position = update.position;
           // Ensure markers keep a fixed orientation and correct size when they are repositioned
-          images[i].rotation = 0;
-          images[i].scale = newMarker[i].scale;
+          image.rotation = 0;
+          image.scale = update.scale;
           // Disable rotation and scale inheritance from parent
-          if (isImage(images[i])) {
-            images[i].disableAttachmentBehavior = ["ROTATION", "SCALE"];
+          if (isImage(image)) {
+            const disabled = image.disableAttachmentBehavior ?? [];
+            if (!disabled.includes("ROTATION")) disabled.push("ROTATION");
+            if (!disabled.includes("SCALE")) disabled.push("SCALE");
+            image.disableAttachmentBehavior = disabled;
           }
         }
       }

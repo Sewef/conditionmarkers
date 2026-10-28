@@ -1,7 +1,6 @@
-import OBR from "@owlbear-rodeo/sdk";
+import OBR, { AttachmentBehavior, Image, Item, isImage } from "@owlbear-rodeo/sdk";
 import { getPluginId } from "./getPluginId";
-import { isImage } from "@owlbear-rodeo/sdk";
-import type { Image } from "@owlbear-rodeo/sdk";
+import { getMarkerPosition, getMarkerScale, isPlainObject } from "./helpers";
 
 import icon from "./icon.svg";
 import { setupConditionMarkersApi } from "./api";
@@ -45,124 +44,155 @@ OBR.onReady(() => {
     shortcut: "Shift + C"
   });
 
-  // Listen for token changes and reposition markers
-  OBR.scene.items.onChange(async (items) => {
-    // Find tokens that have changed
-    const changedTokens = items.filter((item): item is Image =>
-      isImage(item) &&
-      (item.layer === "CHARACTER" || item.layer === "MOUNT")
-    );
-
-    if (changedTokens.length === 0) return;
-
-    // Get all condition markers
-    const allItems = await OBR.scene.items.getItems();
-    const conditionMarkers = allItems.filter((item): item is Image => {
-      if (!isImage(item)) return false;
-      const metadata = item.metadata[getPluginId("metadata")];
-      return !!(metadata && typeof metadata === "object" &&
-        Object.prototype.hasOwnProperty.call(metadata, "enabled") &&
-        (metadata as any).enabled === true);
-    });
-
-    // Find markers attached to changed tokens
-    const markersToUpdate: Array<{ id: string; position: { x: number; y: number }; scale: { x: number; y: number } }> = [];
-    const sceneDpi = await OBR.scene.grid.getDpi();
-
-    for (const token of changedTokens) {
-      const attachedMarkers = conditionMarkers.filter(m => m.attachedTo === token.id);
-
-      for (let i = 0; i < attachedMarkers.length; i++) {
-        const marker = attachedMarkers[i];
-        const newPosition = getMarkerPosition(token, i, sceneDpi);
-        const newScale = getMarkerScale(token);
-
-        // Only update if position or scale changed
-        if (
-          marker.position.x !== newPosition.x ||
-          marker.position.y !== newPosition.y ||
-          marker.scale.x !== newScale.x ||
-          marker.scale.y !== newScale.y
-        ) {
-          markersToUpdate.push({
-            id: marker.id,
-            position: newPosition,
-            scale: newScale
-          });
-        }
-      }
-    }
-
-    // Update markers if needed
-    if (markersToUpdate.length > 0) {
-      await OBR.scene.items.updateItems(
-        markersToUpdate.map(m => m.id),
-        (markers) => {
-          for (let i = 0; i < markers.length; i++) {
-            if (isImage(markers[i])) {
-              markers[i].position = markersToUpdate[i].position;
-              markers[i].scale = markersToUpdate[i].scale;
-              markers[i].rotation = 0;
-              markers[i].disableAttachmentBehavior = ["ROTATION", "SCALE"];
-            }
-          }
-        }
-      );
-    }
-  });
+  setupMarkerUpdates();
 });
 
-// Helper functions (duplicated from helpers.ts for background script)
-function getMarkerPosition(imageItem: Image, count: number, sceneDpi: number) {
-  const markerGridPosition = {
-    x: -1,
-    y: count,
-  };
+type ItemsApi = Pick<typeof OBR.scene.items, "updateItems">;
 
-  const MARKERS_PER_ROW = 5;
-  const tokenGridCellWidth = imageItem.image.width / MARKERS_PER_ROW;
-  const gridCellSpacing = tokenGridCellWidth;
-  let position = {
-    x: markerGridPosition.x * gridCellSpacing,
-    y: markerGridPosition.y * gridCellSpacing
-  };
+/** Consume complete scene snapshots, with at most one write in flight. */
+export function createMarkerUpdater(
+  itemsApi: ItemsApi,
+  getDpi: () => Promise<number>,
+  onError: (error: unknown) => void = console.error,
+) {
+  let pending: Item[] | undefined;
+  let running = false;
+  let generation = 0;
+  let signatures = new Map<string, string>();
 
-  position = {
-    x: position.x - imageItem.grid.offset.x,
-    y: position.y - imageItem.grid.offset.y
-  };
+  async function drain() {
+    running = true;
+    try {
+      while (pending) {
+        const items = pending;
+        pending = undefined;
+        const currentGeneration = generation;
+        const dpi = await getDpi();
+        // A newer snapshot supersedes this one while the grid is being read.
+        if (currentGeneration !== generation || pending) continue;
 
-  position = {
-    x: position.x * (sceneDpi / imageItem.grid.dpi),
-    y: position.y * (sceneDpi / imageItem.grid.dpi)
-  };
+        const markersByToken = new Map<string, Image[]>();
+        for (const item of items) {
+          const metadata = item.metadata[getPluginId("metadata")];
+          if (!isImage(item) || !item.attachedTo ||
+              !isPlainObject(metadata) || metadata.enabled !== true) continue;
+          const markers = markersByToken.get(item.attachedTo) ?? [];
+          markers.push(item);
+          markersByToken.set(item.attachedTo, markers);
+        }
 
-  const absScale = {
-    x: Math.abs(imageItem.scale.x),
-    y: Math.abs(imageItem.scale.y),
-  };
+        const nextSignatures = new Map<string, string>();
+        const updates = new Map<string, {
+          tokenId: string;
+          position: { x: number; y: number };
+          scale: { x: number; y: number };
+        }>();
+        for (const token of items) {
+          if (!isImage(token) ||
+              (token.layer !== "CHARACTER" && token.layer !== "MOUNT")) continue;
+          const markers = markersByToken.get(token.id);
+          if (!markers?.length) continue;
+          // Scene array order is not a marker slot. Keep it stable across clients.
+          markers.sort((a, b) => a.id.localeCompare(b.id));
+          const signature = JSON.stringify([
+            dpi, token.position.x, token.position.y, token.scale.x, token.scale.y, token.rotation,
+            token.image.width, token.grid.dpi, token.grid.offset.x, token.grid.offset.y,
+            markers.map(marker => marker.id),
+          ]);
+          nextSignatures.set(token.id, signature);
+          // Ignore visibility, metadata, and our own marker updates.
+          if (signatures.get(token.id) === signature) continue;
+          markers.forEach((marker, index) => updates.set(marker.id, {
+            tokenId: token.id,
+            position: getMarkerPosition(token, index, dpi),
+            scale: getMarkerScale(token),
+          }));
+        }
+        // Record before writing: updateItems itself emits an onChange event.
+        signatures = nextSignatures;
+        if (updates.size === 0) continue;
+        await itemsApi.updateItems([...updates.keys()], markers => {
+          for (const marker of markers) {
+            const update = updates.get(marker.id);
+            if (!update || !isImage(marker) || marker.attachedTo !== update.tokenId) continue;
+            const differs = (a: number, b: number) => Math.abs(a - b) > 1e-6;
+            if (differs(marker.position.x, update.position.x) ||
+                differs(marker.position.y, update.position.y)) {
+              marker.position = update.position;
+            }
+            if (differs(marker.scale.x, update.scale.x) ||
+                differs(marker.scale.y, update.scale.y)) {
+              marker.scale = update.scale;
+            }
+            if (marker.rotation !== 0) marker.rotation = 0;
+            // Preserve any attachment options set by other extensions.
+            const disabled = marker.disableAttachmentBehavior ?? [];
+            if (!disabled.includes("ROTATION") || !disabled.includes("SCALE")) {
+              marker.disableAttachmentBehavior = [
+                ...new Set<AttachmentBehavior>([...disabled, "ROTATION", "SCALE"]),
+              ];
+            }
+          }
+        });
+      }
+    } catch (error) {
+      signatures.clear();
+      onError(error);
+    } finally {
+      running = false;
+      if (pending) void drain();
+    }
+  }
 
-  position = {
-    x: position.x * absScale.x,
-    y: position.y * absScale.y
+  return {
+    update(items: Item[]) {
+      pending = items;
+      if (!running) void drain();
+    },
+    reset() {
+      generation++;
+      pending = undefined;
+      signatures.clear();
+    },
   };
-
-  position = {
-    x: position.x + imageItem.position.x,
-    y: position.y + imageItem.position.y
-  };
-
-  return position;
 }
 
-function getMarkerScale(imageItem: Image) {
-  const absScale = {
-    x: Math.abs(imageItem.scale.x),
-    y: Math.abs(imageItem.scale.y),
-  };
-  const imageWidthGrid = imageItem.image.width / imageItem.grid.dpi;
-  const scaleX = absScale.x * imageWidthGrid;
-  const scaleY = absScale.y * imageWidthGrid;
-  return { x: scaleX, y: scaleY };
+export function setupMarkerUpdates() {
+  const updater = createMarkerUpdater(OBR.scene.items, () => OBR.scene.grid.getDpi());
+  let unsubscribe: (() => void) | undefined;
+  let latestItems: Item[] | undefined;
+  let generation = 0;
+  async function ready(ready: boolean) {
+    const currentGeneration = ++generation;
+    unsubscribe?.();
+    unsubscribe = undefined;
+    latestItems = undefined;
+    updater.reset();
+    if (!ready) return;
+    let receivedSnapshot = false;
+    unsubscribe = OBR.scene.items.onChange(items => {
+      receivedSnapshot = true;
+      latestItems = items;
+      updater.update(items);
+    });
+    try {
+      const items = await OBR.scene.items.getItems();
+      if (generation === currentGeneration && !receivedSnapshot) {
+        latestItems = items;
+        updater.update(items);
+      }
+    } catch (error) {
+      console.error("Could not initialize condition marker updates", error);
+    }
+  }
+  OBR.scene.onReadyChange(ready);
+  const initialGeneration = generation;
+  void OBR.scene.isReady().then(value => {
+    if (generation === initialGeneration) void ready(value);
+  });
+  OBR.scene.grid.onChange(() => {
+    // DPI is part of the layout signature; other grid changes are harmless.
+    if (latestItems) updater.update(latestItems);
+  });
 }
 
