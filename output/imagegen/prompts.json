@@ -1,0 +1,22 @@
+{
+  "tool": "built-in image_gen",
+  "note": "Review variants; existing images_src originals are unchanged.",
+  "prompts": [
+    {
+      "name": "bleeding",
+      "prompt": "Use case: precise-object-edit. Asset: transparent square raster status icon for a tabletop game, readable at 32–64 pixels. Image 1 is the edit target bleeding.webp; image 2 burned.webp is a style reference only. Simplify the bleeding icon into one large red blood drop, with a strong dark red outline, two or three broad cel-shaded red areas and one simple highlight. Preserve the instantly recognizable blood-drop subject and red palette. Remove the splashes, spikes, tiny droplets and puddle entirely. Match the clean bold illustrated language of the flame reference, not its flame shape. Center the drop, occupying about 85% of the canvas height. Actual transparent background. No sparkles, text, badge, background, texture, photorealism or tiny details."
+    },
+    {
+      "name": "blinded",
+      "prompt": "Use case: precise-object-edit. Asset: square transparent tabletop status icon. Input image is the edit target blinded.webp. Remove every decorative sparkle, star and floating speck around the eye. Preserve the central eye with its large X, the recognizable silhouette, dark outlines, gray/silver palette, existing illustrated shading and proportions. The eye and X must read clearly at 32–64 pixels; make the X slightly lighter gray if needed to separate it from its dark outline. Keep only the eye and X; no new objects, no text, no background or badge. Actual transparent background. Preserve the original central design as closely as possible."
+    },
+    {
+      "name": "invisible",
+      "prompt": "Use case: precise-object-edit. Asset: transparent square tabletop-game status icon readable at 32–64 pixels. Input image is edit target invisible.webp. Preserve the blue-gray hooded empty cloak, front-facing pose, silhouette, circular clasp and dark outlines. Remove ALL decorative four-point stars, floating sparkles, dust, flecks and tiny spots both outside and inside the cloak. Simplify fabric shading into a few broad clean illustrated cel-shaded areas, retaining the main folds and pale edge of the hood. Empty dark opening, no face or body. Keep the same blue-gray palette and visual identity. Centered cloak fills about 85% of square canvas height. Actual transparent background. No text, badge, added objects, photorealistic texture, glitter, particles, stars or magical aura."
+    },
+    {
+      "name": "curled_up",
+      "prompt": "Use case: style-transfer. Asset: square transparent tabletop-game status icon 'curled up', readable at 32–64 pixels. Image 1 curled_up.webp is the edit target; image 2 burned.webp is only the reference for clean bold simplified illustration. Redraw the same golden-orange armored animal tightly curled into a round defensive ball, with its head tucked at lower left and tail wrapping around the lower right. Keep the original overall circular pose and orange-gold palette, but make it clearly cartoon: a few large simplified armor plates, thick dark brown outline, broad flat cel shading, small simple closed eye. Preserve recognizable curled defensive posture. Remove realistic texture, tiny scales, painterly highlights and realistic reptile anatomy. Friendly stylized game icon with large readable shapes. Centered round silhouette fills about 85% of canvas. Actual transparent background. No sparkles, text, badge, scenery or photorealism."
+    }
+  ]
+}

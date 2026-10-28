@@ -19,11 +19,18 @@ Install ImageMagick 7 and ensure `magick` is available on `PATH`.
 `images_src`, then compiles the application. Run `npm run images` to regenerate
 the images separately, including before local development after changing an original.
 
-Both `public/images` (scene markers) and `src/images` (bundled icons) are generated
-at 128 × 128 pixels using Lanczos resampling and lossless WebP encoding.
+`public/images` (scene markers) is generated at 128 × 128 pixels and `src/images`
+(bundled icons) at 150 × 150 pixels, using Lanczos resampling and lossless WebP encoding.
 Always add or edit originals in `images_src`; generated files are overwritten
 at each build. The originals are never modified. If the scene output size changes,
 also update `imageDimensions` in `src/helpers.ts`.
+
+On Render, the automatic `RENDER=true` environment variable makes the script use
+the committed generated images without invoking ImageMagick. After editing or
+adding originals, run `npm run images` locally and commit `images_src`,
+`public/images` and `src/images` together. The Render build checks that every
+original has a non-empty generated file in both output directories and reports
+missing assets instead of deploying broken markers.
 
 This project is a simple Typescript app and works similarly to the [Colored Rings](https://extensions.owlbear.rodeo/colored-rings) extension by Owlbear Rodeo, which was the basis for this project.
 

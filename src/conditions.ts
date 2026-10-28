@@ -18,6 +18,7 @@ export const conditions = [
   "Danger",
   "Debuff",
   "Fainted",
+  "Fed",
   "Flinched",
   "Frozen",
   "Grappled",
@@ -48,4 +49,5 @@ export const conditions = [
   "Vortex",
   "Vulnerable",
   "Wait",
+  "Wet",
 ];

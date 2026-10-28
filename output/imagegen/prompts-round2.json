@@ -1,0 +1,38 @@
+{
+  "tool": "built-in image_gen",
+  "note": "Review variants; images_src originals unchanged.",
+  "prompts": [
+    {
+      "name": "confused",
+      "prompt": "Use case: precise-object-edit. Edit target image 1 confused.webp; image 2 burned.webp is a clean outline and cel shading reference only. Create a transparent square tabletop confusion status icon readable at 32–64px. The original golden three stars and orbit are good: preserve their warm yellow-gold palette, brown outlines, playful cartoon drawing and three large five-point stars. Correct the orbit geometry: a genuinely circular frontal ring, not an ellipse or tilted spiral. Three large stars spaced evenly around one perfectly round golden orbit. The complete outside silhouette should be balanced and circular, equal width and height, centered. Remove secondary tiny sparkles and dots. Simple broad cel shading and thick clean outlines; no texture, photorealism, text, background or badge. True transparent background, comfortable 8% margins."
+    },
+    {
+      "name": "corrupted",
+      "prompt": "Use case: style-transfer. Input image 1 corrupted.webp is subject reference/edit target. Image 2 burned.webp defines the desired bold clean cartoon game icon drawing: dark contour, few broad cel-shaded shapes. Redesign corrupted into a clear dark-purple sinister shadow face with TWO large vivid red-orange eyes, surrounded by only three or four broad violet corruption tendrils forming a compact circular silhouette. Preserve original purple palette, shadow-face subject and red eyes. At 32–64px eyes and face must dominate; outer tendrils are a few simple shapes, not a thicket of smoky curls. Significantly lighten the violet areas for a dark game board. Avoid realistic painted horror, glossy textures, fine wisps, particles, stars, sparkles, glowing fog, text and badge. Center with 8% margin on a square canvas, actual transparent background."
+    },
+    {
+      "name": "cursed",
+      "prompt": "Use case: style-transfer. Image 1 cursed.webp is edit target, image 2 burned.webp supplies the style: bold cartoon outlines and simple broad cel shading. Harmonize cursed with a clean illustrated status icon set for readability at 32–64px. Preserve the round gray curse medallion pierced diagonally by one large dark iron nail, one large simple purple angular rune on the face, and a few purple flames behind. Simplify to a smooth slate-gray medallion with broad highlights, bold readable violet rune, thick dark outlines, three or four broad purple flame shapes. No stone grain, surface chips, intricate cracks, decorative engraving or tiny disconnected wisps. Keep nail and rune visually distinct. Center compact composition with 8% margin, true transparent square background. No text, badge, sparkle, photorealism, painted texture or fine details."
+    },
+    {
+      "name": "danger",
+      "prompt": "Use case: style-transfer. Image 1 danger.webp is subject reference/edit target, image 2 burned.webp sets bold clean cartoon cel-shaded style. Redesign danger as a simple threatening pale ivory skull with TWO large violet eye sockets, a broad simple jaw and only four or five big teeth, framed by three broad purple flame shapes. The skull dominates the icon. Preserve skull subject and purple palette, but remove the lower orb, floating shards, ghosts, flying fragments, sparks, tiny teeth, thin cracks, intricate organic textures and realistic horror painting. Thick dark purple outlines, clean broad shaded shapes like a polished cartoon game status icon. Must read at 32–64px on a dark board. No text, stars, sparkle, texture, smoke gradients, photorealism or badge. Compact centered silhouette, actual transparent square background, 8% margins."
+    },
+    {
+      "name": "heal_block",
+      "prompt": "Use case: style-transfer. Image 1 heal_block.webp is subject/edit reference; image 2 burned.webp is the style reference: clean outlined cartoon game icon, broad cel shading. Redesign heal block for immediate readability at 32–64px. One large bright green heart, clearly recognizable heart silhouette, tightly bound by TWO broad dark-purple thorny bands crossing in an X. Only a few large thorns. Preserve original green heart and purple obstruction concept, but remove tall central blade, splashes, tiny particles, excessive spikes and realistic glossy organic texture. Thick very dark purple contours, three broad green shades with one simple highlight; bright violet edges on the bands to distinguish them. Compact centered icon, 8% margins on true transparent square background. No sparkle, texture, photorealism, text, symbols floating outside, aura or badge."
+    },
+    {
+      "name": "hunters_mark",
+      "prompt": "Use case: style-transfer. Image 1 hunters_mark.webp is subject reference/edit target; image 2 burned.webp defines clean bold cartoon cel shading style. Redraw hunter's mark into a clear silver-white wolf HEAD (a living stylized wolf, not a skull), two pointed ears, simple dark nose, narrowed red-orange eyes and a CLOSED mouth, surrounded by ONE circular orange hunting reticle with four short broad cardinal ticks. Preserve wolf-in-orange-reticle concept and original silver/black/orange palette. Large simple shapes, thick dark outline, two or three broad fur shading areas, no individual fur strands, cracks, teeth, scratches, flames, glowing haze or floating particles. Reticle must be true circular and separated from head by clear space. Small-size game status icon readable at 32–64px. Actual transparent square background, centered compact silhouette with 8% margin. No text, badge, sparkles, texture, realism or extra symbols."
+    },
+    {
+      "name": "sleep",
+      "prompt": "Use case: style-transfer. Image 1 sleep.webp is the original status icon to redesign, image 2 burned.webp is the graphic style reference only. Replace the cluttered original with a simple friendly pale-blue crescent moon sleeping, one large closed curved eyelid and a small relaxed mouth, with TWO chunky blue 'Z' letters ascending near the open side. The letters must be exactly 'Z' and 'Z', large and legible, not decorative stars. Preserve cool blue palette and crescent-moon theme. Bold dark navy outlines, two or three broad cel-shaded areas, smooth simple crescent silhouette. Readable at 32–64px. No cloud patterns, cloud curls, stars, sparkle, particles, texture, realistic lighting or fine details. No other text, no badge. Center compact silhouette with 8% margin on actual transparent square background."
+    },
+    {
+      "name": "vulnerable",
+      "prompt": "Use case: precise-object-edit / style-transfer. Image 1 vulnerable.webp is the subject/edit reference, image 2 burned.webp defines the simple bold cartoon illustration style. Redesign vulnerable as ONE large steel-blue shield visibly BROKEN INTO TWO HALVES by a very wide jagged central gap from the top rim through the bottom tip. Shift the halves apart just enough that the transparent dark gap reads immediately at 32–64px. Each half has one large pale silver rim and a broad bright light-blue face, with only one simple shaded region. The large central zigzag split is the defining symbol. Strong dark navy outline, high contrast, clean cel-shaded shapes, symmetrical overall shield silhouette. Remove all minor cracks, chips, surface pits, mottling, scratches and loose debris. Preserve original blue shield identity. Actual transparent square background, centered, about 85% canvas height. No text, sparkle, badge, realistic metal or texture."
+    }
+  ]
+}

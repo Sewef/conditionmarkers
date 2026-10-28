@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
@@ -21,12 +21,36 @@ function magick(args) {
   }
 }
 
-try {
+function buildImages() {
   const files = readdirSync(source, { withFileTypes: true })
     .filter(entry => entry.isFile() && /\.webp$/i.test(entry.name))
     .map(entry => entry.name)
     .sort();
   if (files.length === 0) throw new Error("No WebP originals found in images_src.");
+
+  // Render deploys the generated assets committed alongside the originals.
+  // Do not require a system ImageMagick installation on the build server.
+  if (process.env.RENDER === "true") {
+    const missing = [];
+    for (const { directory } of outputs) {
+      for (const file of files) {
+        const path = join(directory, file);
+        try {
+          const stats = statSync(path);
+          if (!stats.isFile() || stats.size === 0) missing.push(path);
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error;
+          missing.push(path);
+        }
+      }
+    }
+    if (missing.length > 0) {
+      throw new Error(`Generated images missing or empty. Run npm run images locally and commit both output directories before deploying:\n${missing.join("\n")}`);
+    }
+    console.log(`Render: using ${files.length} existing images in each output directory; skipping ImageMagick.`);
+    return;
+  }
+
   magick(["-version"]);
 
   for (const { directory, size } of outputs) {
@@ -47,6 +71,10 @@ try {
     }
     console.log(`Generated ${files.length} WebP images at ${size}x${size} in ${directory}`);
   }
+}
+
+try {
+  buildImages();
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

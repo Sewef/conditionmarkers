@@ -96,7 +96,7 @@ export async function buildConditionMarker(
     mime: "image/webp",
     url: imageUrl,
   }
-  const desiredLength = sceneDpi * 0.275;
+  const desiredLength = sceneDpi * 0.25;
   const imageGrid: ImageGrid = {
     offset: { x: 0, y: imageDimensions.height / 2 },
     dpi: (sceneDpi * imageDimensions.width) / desiredLength,
