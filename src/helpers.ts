@@ -85,10 +85,9 @@ export async function buildConditionMarker(
   attachedCount: number,
 ) {
   const sceneDpi = await OBR.scene.grid.getDpi();
-  // Dynamically detect the actual image dimensions
-  // const imageDimensions = await getImageDimensions(imageUrl);
-  const imageDimensions = { width: 512, height: 512 };
-  const imageUrl = `${window.origin}/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.webp`;
+  // Match the Lanczos-resampled assets in public/images; originals live in images_src.
+  const imageDimensions = { width: 128, height: 128 };
+  const imageUrl = `${window.origin}/images/${name.toLowerCase().replace(/['-]/g, "").replace(/[ ]/g, "_")}.webp?v=lanczos128`;
 
   // Setup marker grid
   const markerImage = {

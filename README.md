@@ -12,6 +12,19 @@ The extension can be installed from the Owlbear Rodeo [extensions page](https://
 
 ## How it Works
 
+### Building images
+
+Install ImageMagick 7 and ensure `magick` is available on `PATH`.
+`npm run build` first generates the WebP assets from the originals in
+`images_src`, then compiles the application. Run `npm run images` to regenerate
+the images separately, including before local development after changing an original.
+
+Both `public/images` (scene markers) and `src/images` (bundled icons) are generated
+at 128 × 128 pixels using Lanczos resampling and lossless WebP encoding.
+Always add or edit originals in `images_src`; generated files are overwritten
+at each build. The originals are never modified. If the scene output size changes,
+also update `imageDimensions` in `src/helpers.ts`.
+
 This project is a simple Typescript app and works similarly to the [Colored Rings](https://extensions.owlbear.rodeo/colored-rings) extension by Owlbear Rodeo, which was the basis for this project.
 
 The background script background.ts communicates with Owlbear Rodeo to create a context menu item, and when that item is clicked a popup is shown with the main.ts site rendered.
