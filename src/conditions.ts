@@ -32,6 +32,7 @@ export const conditions = [
   "Paralysed",
   "Phased",
   "Poisoned",
+  "Possessed",
   "Pumped",
   "Rage",
   "Regeneration",
